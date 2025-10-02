@@ -309,6 +309,70 @@ class RecipeFinder {
     showError(message) {
         alert(message); // In a real app, you'd want a better error display
     }
+
+    
+
+    async searchRecipes() {
+        const ingredientsInput = document.getElementById('ingredients-input');
+        const ingredients = ingredientsInput.value.trim();
+        
+        if (!ingredients) {
+            this.showError('Please enter at least one ingredient');
+            return;
+        }
+
+        this.showLoading(true);
+        this.showPage('results');
+
+        try {
+            // Clean up ingredients string
+            const cleanIngredients = ingredients.replace(/\s*,\s*/g, ',');
+            console.log('Searching for ingredients:', cleanIngredients);
+            
+            const response = await fetch(`/api/recipes?ingredients=${encodeURIComponent(cleanIngredients)}`);
+            
+            console.log('Response status:', response.status);
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error}`);
+            }
+            
+            const recipes = await response.json();
+            console.log('Received recipes:', recipes);
+            this.displayRecipes(recipes);
+            
+            // Update results subtitle
+            document.getElementById('results-subtitle').textContent = 
+                `Based on: ${ingredients}`;
+                
+        } catch (error) {
+            console.error('Error fetching recipes:', error);
+            this.showError(`Failed to fetch recipes: ${error.message}`);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    showError(message) {
+        // Create a better error display
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message';
+        errorDiv.innerHTML = `
+            <div style="background: #ffebee; color: #c62828; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #c62828;">
+                <strong><i class="fas fa-exclamation-triangle"></i> Error:</strong> ${message}
+            </div>
+        `;
+        
+        // Insert at the top of the current page
+        const currentPage = document.querySelector('.page.active');
+        currentPage.insertBefore(errorDiv, currentPage.firstChild);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            errorDiv.remove();
+        }, 5000);
+    }
 }
 
 // Initialize the application
