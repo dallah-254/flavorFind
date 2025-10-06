@@ -655,364 +655,386 @@
             <p>&copy; 2024 FlavorFind. All Rights Reserved. | Discover, Cook, Enjoy</p>
         </div>
     </footer>
+<script>
+    // API Configuration - Updated with your deployed backend URL
+    const API_BASE_URL = 'https://recipe-finder-back-qibi.onrender.com';
 
-    <script>
-        // API Configuration
-        const API_BASE_URL = 'http://localhost:3000'; // Change this to your backend URL in production
+    // DOM Elements
+    const searchToggle = document.getElementById('searchToggle');
+    const searchBar = document.getElementById('searchBar');
+    const ingredientInput = document.getElementById('ingredientInput');
+    const heroIngredientInput = document.getElementById('heroIngredientInput');
+    const heroSection = document.getElementById('heroSection');
+    const loadingSection = document.getElementById('loadingSection');
+    const resultsSection = document.getElementById('resultsSection');
+    const recipesGrid = document.getElementById('recipesGrid');
+    const recipeCount = document.getElementById('recipeCount');
+    const recipeModal = document.getElementById('recipeModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalContent = document.getElementById('modalContent');
+    const categoryResultsSection = document.getElementById('categoryResultsSection');
+    const categoryRecipesGrid = document.getElementById('categoryRecipesGrid');
+    const categoryRecipeCount = document.getElementById('categoryRecipeCount');
 
-        // DOM Elements
-        const searchToggle = document.getElementById('searchToggle');
-        const searchBar = document.getElementById('searchBar');
-        const ingredientInput = document.getElementById('ingredientInput');
-        const heroIngredientInput = document.getElementById('heroIngredientInput');
-        const heroSection = document.getElementById('heroSection');
-        const loadingSection = document.getElementById('loadingSection');
-        const resultsSection = document.getElementById('resultsSection');
-        const recipesGrid = document.getElementById('recipesGrid');
-        const recipeCount = document.getElementById('recipeCount');
-        const recipeModal = document.getElementById('recipeModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalContent = document.getElementById('modalContent');
-        const categoryResultsSection = document.getElementById('categoryResultsSection');
-        const categoryRecipesGrid = document.getElementById('categoryRecipesGrid');
-        const categoryRecipeCount = document.getElementById('categoryRecipeCount');
-
-        // Page navigation
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const page = e.target.getAttribute('data-page');
-                showPage(page);
-            });
+    // Page navigation
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const page = e.target.getAttribute('data-page');
+            showPage(page);
         });
+    });
 
-        function showPage(pageName) {
-            // Hide all pages
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-            
-            // Show selected page
-            document.getElementById(`${pageName}-page`).classList.add('active');
-            
-            // Scroll to top
-            window.scrollTo(0, 0);
-        }
-
-        // Toggle search bar
-        searchToggle.addEventListener('click', () => {
-            searchBar.classList.toggle('hidden');
+    function showPage(pageName) {
+        // Hide all pages
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
         });
+        
+        // Show selected page
+        document.getElementById(`${pageName}-page`).classList.add('active');
+        
+        // Scroll to top
+        window.scrollTo(0, 0);
+    }
 
-        // Add ingredient from quick tags
-        function addIngredient(ingredient) {
-            const current = ingredientInput.value;
-            if (current) {
-                ingredientInput.value = current + ', ' + ingredient;
-            } else {
-                ingredientInput.value = ingredient;
-            }
-            ingredientInput.focus();
+    // Toggle search bar
+    searchToggle.addEventListener('click', () => {
+        searchBar.classList.toggle('hidden');
+    });
+
+    // Add ingredient from quick tags
+    function addIngredient(ingredient) {
+        const current = ingredientInput.value;
+        if (current) {
+            ingredientInput.value = current + ', ' + ingredient;
+        } else {
+            ingredientInput.value = ingredient;
         }
+        ingredientInput.focus();
+    }
 
-        function addHeroIngredient(ingredient) {
-            const current = heroIngredientInput.value;
-            if (current) {
-                heroIngredientInput.value = current + ', ' + ingredient;
-            } else {
-                heroIngredientInput.value = ingredient;
-            }
-            heroIngredientInput.focus();
+    function addHeroIngredient(ingredient) {
+        const current = heroIngredientInput.value;
+        if (current) {
+            heroIngredientInput.value = current + ', ' + ingredient;
+        } else {
+            heroIngredientInput.value = ingredient;
         }
+        heroIngredientInput.focus();
+    }
 
-        // Search recipes from header
-        async function searchRecipes() {
-            const ingredients = ingredientInput.value.trim();
-            if (!ingredients) {
-                alert('Please enter some ingredients');
-                return;
-            }
-            await performSearch(ingredients);
+    // Search recipes from header
+    async function searchRecipes() {
+        const ingredients = ingredientInput.value.trim();
+        if (!ingredients) {
+            alert('Please enter some ingredients');
+            return;
         }
+        await performSearch(ingredients);
+    }
 
-        // Search recipes from hero section
-        async function searchRecipesFromHero() {
-            const ingredients = heroIngredientInput.value.trim();
-            if (!ingredients) {
-                alert('Please enter some ingredients');
-                return;
-            }
-            await performSearch(ingredients);
+    // Search recipes from hero section
+    async function searchRecipesFromHero() {
+        const ingredients = heroIngredientInput.value.trim();
+        if (!ingredients) {
+            alert('Please enter some ingredients');
+            return;
         }
+        await performSearch(ingredients);
+    }
 
-        // Search featured recipes
-        async function searchFeaturedRecipe(ingredients) {
-            await performSearch(ingredients);
+    // Search featured recipes
+    async function searchFeaturedRecipe(ingredients) {
+        await performSearch(ingredients);
+    }
+
+    // Search by category
+    async function searchByCategory(category) {
+        const categoryIngredients = {
+            'italian': 'pasta,tomato,cheese,olive oil,basil',
+            'mexican': 'beans,rice,avocado,tortilla,chili',
+            'asian': 'rice,noodles,soy sauce,ginger,garlic',
+            'african': 'rice,beans,plantains,spices,chicken',
+            'vegetarian': 'vegetables,tofu,beans,lentils,cheese',
+            'dessert': 'sugar,flour,eggs,butter,chocolate'
+        };
+        
+        if (categoryIngredients[category]) {
+            await performCategorySearch(categoryIngredients[category], category);
         }
+    }
 
-        // Search by category
-        async function searchByCategory(category) {
-            const categoryIngredients = {
-                'italian': 'pasta,tomato,cheese,olive oil,basil',
-                'mexican': 'beans,rice,avocado,tortilla,chili',
-                'asian': 'rice,noodles,soy sauce,ginger,garlic',
-                'african': 'rice,beans,plantains,spices,chicken',
-                'vegetarian': 'vegetables,tofu,beans,lentils,cheese',
-                'dessert': 'sugar,flour,eggs,butter,chocolate'
-            };
-            
-            if (categoryIngredients[category]) {
-                await performCategorySearch(categoryIngredients[category], category);
-            }
-        }
-
-        // Perform the actual search
-        async function performSearch(ingredients) {
-            try {
-                // Show loading, hide hero and search bar
-                loadingSection.classList.remove('hidden');
-                heroSection.classList.add('hidden');
-                searchBar.classList.add('hidden');
-                resultsSection.classList.add('hidden');
-                recipesGrid.innerHTML = '';
-
-                console.log('Searching for recipes with ingredients:', ingredients);
-
-                const response = await fetch(`${API_BASE_URL}/api/recipes?ingredients=${encodeURIComponent(ingredients)}`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const recipes = await response.json();
-                
-                // Hide loading, show results
-                loadingSection.classList.add('hidden');
-                resultsSection.classList.remove('hidden');
-                
-                // Update recipe count
-                recipeCount.textContent = recipes.length;
-                
-                // Display recipes
-                displayRecipes(recipes, recipesGrid);
-                
-            } catch (error) {
-                console.error('Error searching recipes:', error);
-                loadingSection.classList.add('hidden');
-                heroSection.classList.remove('hidden');
-                alert('Error searching for recipes. Please try again.');
-            }
-        }
-
-        // Perform category search
-        async function performCategorySearch(ingredients, categoryName) {
-            try {
-                // Show loading, hide category results
-                loadingSection.classList.remove('hidden');
-                categoryResultsSection.classList.add('hidden');
-                categoryRecipesGrid.innerHTML = '';
-
-                console.log('Searching for category recipes with ingredients:', ingredients);
-
-                const response = await fetch(`${API_BASE_URL}/api/recipes?ingredients=${encodeURIComponent(ingredients)}`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const recipes = await response.json();
-                
-                // Hide loading, show category results
-                loadingSection.classList.add('hidden');
-                categoryResultsSection.classList.remove('hidden');
-                
-                // Update recipe count
-                categoryRecipeCount.textContent = recipes.length;
-                
-                // Display recipes
-                displayRecipes(recipes, categoryRecipesGrid);
-                
-            } catch (error) {
-                console.error('Error searching category recipes:', error);
-                loadingSection.classList.add('hidden');
-                alert('Error searching for recipes. Please try again.');
-            }
-        }
-
-        // Display recipes in the grid
-        function displayRecipes(recipes, gridElement) {
-            gridElement.innerHTML = '';
-            
-            if (recipes.length === 0) {
-                gridElement.innerHTML = `
-                    <div class="col-span-full text-center py-12">
-                        <i class="fas fa-search text-6xl text-gray-500 mb-4"></i>
-                        <h3 class="text-2xl font-bold text-gray-400">No recipes found</h3>
-                        <p class="text-gray-500 mt-2">Try different ingredients or check your spelling</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            recipes.forEach(recipe => {
-                const recipeCard = document.createElement('div');
-                recipeCard.className = 'recipe-card rounded-2xl overflow-hidden fade-in';
-                recipeCard.innerHTML = `
-                    <img src="${recipe.image}" 
-                         alt="${recipe.title}" 
-                         class="w-full h-48 object-cover"
-                         onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'">
-                    <div class="p-6">
-                        <h3 class="font-bold text-xl mb-2 line-clamp-2">${recipe.title}</h3>
-                        
-                        <!-- Used Ingredients -->
-                        <div class="mb-3">
-                            <p class="text-sm text-gray-400 mb-1">Uses:</p>
-                            <div class="flex flex-wrap gap-1">
-                                ${recipe.usedIngredients && recipe.usedIngredients.slice(0, 3).map(ing => 
-                                    `<span class="bg-green-900 text-green-300 px-2 py-1 rounded text-xs">${ing.name}</span>`
-                                ).join('')}
-                            </div>
-                        </div>
-                        
-                        <!-- Missing Ingredients -->
-                        ${recipe.missedIngredients && recipe.missedIngredients.length > 0 ? `
-                        <div class="mb-4">
-                            <p class="text-sm text-gray-400 mb-1">Missing:</p>
-                            <div class="flex flex-wrap gap-1">
-                                ${recipe.missedIngredients.slice(0, 3).map(ing => 
-                                    `<span class="bg-gray-700 text-gray-300 px-2 py-1 rounded text-xs">${ing.name}</span>`
-                                ).join('')}
-                                ${recipe.missedIngredients.length > 3 ? `<span class="text-xs text-gray-500">+${recipe.missedIngredients.length - 3} more</span>` : ''}
-                            </div>
-                        </div>
-                        ` : ''}
-                        
-                        <button onclick="viewRecipeDetails(${recipe.id})" class="btn-primary text-white font-semibold py-2 px-6 rounded-lg w-full">
-                            View Recipe
-                        </button>
-                    </div>
-                `;
-                gridElement.appendChild(recipeCard);
-            });
-        }
-
-        // View recipe details
-        async function viewRecipeDetails(recipeId) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/recipes/${recipeId}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const recipe = await response.json();
-                
-                // Display recipe in modal
-                modalTitle.textContent = recipe.title;
-                modalContent.innerHTML = `
-                    <div class="mb-6">
-                        <img src="${recipe.image}" alt="${recipe.title}" class="w-full h-64 object-cover rounded-lg">
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <h3 class="text-xl font-bold mb-4 text-orange-500">Ingredients</h3>
-                            <ul class="space-y-2">
-                                ${recipe.extendedIngredients ? recipe.extendedIngredients.map(ingredient => 
-                                    `<li class="flex items-center gap-2">
-                                        <i class="fas fa-check text-green-500"></i>
-                                        <span>${ingredient.original}</span>
-                                    </li>`
-                                ).join('') : '<li>No ingredients information available</li>'}
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold mb-4 text-orange-500">Instructions</h3>
-                            <div class="space-y-4">
-                                ${recipe.analyzedInstructions && recipe.analyzedInstructions[0] ? 
-                                    recipe.analyzedInstructions[0].steps.map(step => 
-                                        `<div class="flex gap-3">
-                                            <span class="bg-orange-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">${step.number}</span>
-                                            <p>${step.step}</p>
-                                        </div>`
-                                    ).join('') : 
-                                    '<p>No instructions available. Please visit the source website for instructions.</p>'
-                                }
-                            </div>
-                        </div>
-                    </div>
-                    ${recipe.sourceUrl ? `
-                    <div class="mt-6 text-center">
-                        <a href="${recipe.sourceUrl}" target="_blank" class="btn-primary inline-flex items-center gap-2 text-white font-semibold py-2 px-6 rounded-lg">
-                            <i class="fas fa-external-link-alt"></i>
-                            View Full Recipe on ${recipe.sourceName || 'Source Website'}
-                        </a>
-                    </div>
-                    ` : ''}
-                `;
-                
-                recipeModal.classList.add('active');
-                
-            } catch (error) {
-                console.error('Error fetching recipe details:', error);
-                alert('Error loading recipe details. Please try again.');
-            }
-        }
-
-        // Close modal
-        function closeModal() {
-            recipeModal.classList.remove('active');
-        }
-
-        // Clear search results
-        function clearSearch() {
+    // Perform the actual search
+    async function performSearch(ingredients) {
+        try {
+            // Show loading, hide hero and search bar
+            loadingSection.classList.remove('hidden');
+            heroSection.classList.add('hidden');
+            searchBar.classList.add('hidden');
             resultsSection.classList.add('hidden');
-            heroSection.classList.remove('hidden');
-            searchBar.classList.remove('hidden');
-            ingredientInput.value = '';
-            heroIngredientInput.value = '';
             recipesGrid.innerHTML = '';
-        }
 
-        // Clear category search results
-        function clearCategorySearch() {
+            console.log('Searching for recipes with ingredients:', ingredients);
+
+            const response = await fetch(`${API_BASE_URL}/api/recipes?ingredients=${encodeURIComponent(ingredients)}`);
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const recipes = await response.json();
+            
+            // Hide loading, show results
+            loadingSection.classList.add('hidden');
+            resultsSection.classList.remove('hidden');
+            
+            // Update recipe count
+            recipeCount.textContent = recipes.length;
+            
+            // Display recipes
+            displayRecipes(recipes, recipesGrid);
+            
+        } catch (error) {
+            console.error('Error searching recipes:', error);
+            loadingSection.classList.add('hidden');
+            heroSection.classList.remove('hidden');
+            alert(`Error searching for recipes: ${error.message}`);
+        }
+    }
+
+    // Perform category search
+    async function performCategorySearch(ingredients, categoryName) {
+        try {
+            // Show loading, hide category results
+            loadingSection.classList.remove('hidden');
             categoryResultsSection.classList.add('hidden');
             categoryRecipesGrid.innerHTML = '';
+
+            console.log('Searching for category recipes with ingredients:', ingredients);
+
+            const response = await fetch(`${API_BASE_URL}/api/recipes?ingredients=${encodeURIComponent(ingredients)}`);
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const recipes = await response.json();
+            
+            // Hide loading, show category results
+            loadingSection.classList.add('hidden');
+            categoryResultsSection.classList.remove('hidden');
+            
+            // Update recipe count
+            categoryRecipeCount.textContent = recipes.length;
+            
+            // Display recipes
+            displayRecipes(recipes, categoryRecipesGrid);
+            
+        } catch (error) {
+            console.error('Error searching category recipes:', error);
+            loadingSection.classList.add('hidden');
+            alert(`Error searching for recipes: ${error.message}`);
         }
+    }
 
-        // Allow pressing Enter to search
-        ingredientInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                searchRecipes();
-            }
+    // Display recipes in the grid
+    function displayRecipes(recipes, gridElement) {
+        gridElement.innerHTML = '';
+        
+        if (recipes.length === 0) {
+            gridElement.innerHTML = `
+                <div class="col-span-full text-center py-12">
+                    <i class="fas fa-search text-6xl text-gray-500 mb-4"></i>
+                    <h3 class="text-2xl font-bold text-gray-400">No recipes found</h3>
+                    <p class="text-gray-500 mt-2">Try different ingredients or check your spelling</p>
+                </div>
+            `;
+            return;
+        }
+        
+        recipes.forEach(recipe => {
+            const recipeCard = document.createElement('div');
+            recipeCard.className = 'recipe-card rounded-2xl overflow-hidden fade-in';
+            recipeCard.innerHTML = `
+                <img src="${recipe.image}" 
+                     alt="${recipe.title}" 
+                     class="w-full h-48 object-cover"
+                     onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'">
+                <div class="p-6">
+                    <h3 class="font-bold text-xl mb-2 line-clamp-2">${recipe.title}</h3>
+                    
+                    <!-- Used Ingredients -->
+                    <div class="mb-3">
+                        <p class="text-sm text-gray-400 mb-1">Uses:</p>
+                        <div class="flex flex-wrap gap-1">
+                            ${recipe.usedIngredients && recipe.usedIngredients.slice(0, 3).map(ing => 
+                                `<span class="bg-green-900 text-green-300 px-2 py-1 rounded text-xs">${ing.name}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+                    
+                    <!-- Missing Ingredients -->
+                    ${recipe.missedIngredients && recipe.missedIngredients.length > 0 ? `
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-400 mb-1">Missing:</p>
+                        <div class="flex flex-wrap gap-1">
+                            ${recipe.missedIngredients.slice(0, 3).map(ing => 
+                                `<span class="bg-gray-700 text-gray-300 px-2 py-1 rounded text-xs">${ing.name}</span>`
+                            ).join('')}
+                            ${recipe.missedIngredients.length > 3 ? `<span class="text-xs text-gray-500">+${recipe.missedIngredients.length - 3} more</span>` : ''}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <button onclick="viewRecipeDetails(${recipe.id})" class="btn-primary text-white font-semibold py-2 px-6 rounded-lg w-full">
+                        View Recipe
+                    </button>
+                </div>
+            `;
+            gridElement.appendChild(recipeCard);
         });
+    }
 
-        heroIngredientInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                searchRecipesFromHero();
+    // View recipe details
+    async function viewRecipeDetails(recipeId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/recipes/${recipeId}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
-        });
+            const recipe = await response.json();
+            
+            // Display recipe in modal
+            modalTitle.textContent = recipe.title;
+            modalContent.innerHTML = `
+                <div class="mb-6">
+                    <img src="${recipe.image}" alt="${recipe.title}" class="w-full h-64 object-cover rounded-lg"
+                         onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="text-xl font-bold mb-4 text-orange-500">Ingredients</h3>
+                        <ul class="space-y-2">
+                            ${recipe.extendedIngredients ? recipe.extendedIngredients.map(ingredient => 
+                                `<li class="flex items-center gap-2">
+                                    <i class="fas fa-check text-green-500"></i>
+                                    <span>${ingredient.original}</span>
+                                </li>`
+                            ).join('') : '<li>No ingredients information available</li>'}
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-4 text-orange-500">Instructions</h3>
+                        <div class="space-y-4">
+                            ${recipe.analyzedInstructions && recipe.analyzedInstructions[0] ? 
+                                recipe.analyzedInstructions[0].steps.map(step => 
+                                    `<div class="flex gap-3">
+                                        <span class="bg-orange-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">${step.number}</span>
+                                        <p>${step.step}</p>
+                                    </div>`
+                                ).join('') : 
+                                '<p>No instructions available. Please visit the source website for instructions.</p>'
+                            }
+                        </div>
+                    </div>
+                </div>
+                ${recipe.sourceUrl ? `
+                <div class="mt-6 text-center">
+                    <a href="${recipe.sourceUrl}" target="_blank" class="btn-primary inline-flex items-center gap-2 text-white font-semibold py-2 px-6 rounded-lg">
+                        <i class="fas fa-external-link-alt"></i>
+                        View Full Recipe on ${recipe.sourceName || 'Source Website'}
+                    </a>
+                </div>
+                ` : ''}
+            `;
+            
+            recipeModal.classList.add('active');
+            
+        } catch (error) {
+            console.error('Error fetching recipe details:', error);
+            alert(`Error loading recipe details: ${error.message}`);
+        }
+    }
 
-        // Close modal when clicking outside
-        recipeModal.addEventListener('click', (e) => {
-            if (e.target === recipeModal) {
-                closeModal();
-            }
-        });
+    // Close modal
+    function closeModal() {
+        recipeModal.classList.remove('active');
+    }
 
-        // Test API connection on load
-        window.addEventListener('load', async () => {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/health`);
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('API Health:', data);
-                } else {
-                    console.error('API health check failed');
-                }
-            } catch (error) {
-                console.error('API connection test failed:', error);
-                alert('Warning: Cannot connect to the backend server. Please make sure the backend is running on ' + API_BASE_URL);
+    // Clear search results
+    function clearSearch() {
+        resultsSection.classList.add('hidden');
+        heroSection.classList.remove('hidden');
+        searchBar.classList.remove('hidden');
+        ingredientInput.value = '';
+        heroIngredientInput.value = '';
+        recipesGrid.innerHTML = '';
+    }
+
+    // Clear category search results
+    function clearCategorySearch() {
+        categoryResultsSection.classList.add('hidden');
+        categoryRecipesGrid.innerHTML = '';
+    }
+
+    // Allow pressing Enter to search
+    ingredientInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            searchRecipes();
+        }
+    });
+
+    heroIngredientInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            searchRecipesFromHero();
+        }
+    });
+
+    // Close modal when clicking outside
+    recipeModal.addEventListener('click', (e) => {
+        if (e.target === recipeModal) {
+            closeModal();
+        }
+    });
+
+    // Test API connection on load
+    window.addEventListener('load', async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/health`);
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ API Health:', data);
+                // Optional: Show success message in console
+            } else {
+                console.error('❌ API health check failed');
+                alert('Warning: Backend server is not responding properly. Some features may not work.');
             }
-        });
-    </script>
+        } catch (error) {
+            console.error('❌ API connection test failed:', error);
+            alert(`Warning: Cannot connect to the backend server at ${API_BASE_URL}. Please make sure the backend is running.`);
+        }
+    });
+
+    // Additional utility function to test API connection manually
+    async function testAPIConnection() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/test`);
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ API Test Successful:', data);
+                alert('API connection test successful! Backend is working properly.');
+            } else {
+                throw new Error('API test failed');
+            }
+        } catch (error) {
+            console.error('❌ API Test Failed:', error);
+            alert('API connection test failed. Please check the backend server.');
+        }
+    }
+</script>
 </body>
 </html>
