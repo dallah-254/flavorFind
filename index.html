@@ -3,190 +3,573 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recipe Finder - Your Kitchen Companion</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>FlavorFind - Discover Amazing Recipes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .bg-custom-dark {
+            background-color: #121212;
+        }
+        .hero-section {
+            background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80');
+            background-size: cover;
+            background-position: center;
+            transition: all 0.5s ease;
+        }
+        .hero-section.hidden {
+            display: none;
+        }
+        .btn-primary {
+            background-color: #e87a3d;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #d96d2f;
+            transform: translateY(-2px);
+        }
+        .recipe-card {
+            transition: all 0.3s ease;
+            background: #1e1e1e;
+        }
+        .recipe-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        .ingredient-tag {
+            background: #2d2d2d;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .ingredient-tag:hover {
+            background: #e87a3d;
+            color: white;
+        }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #e87a3d;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        .recipe-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        .recipe-modal.active {
+            display: block;
+        }
+        .search-bar-hidden {
+            display: none !important;
+        }
+        
+        /* Responsive Design Updates */
+        @media (max-width: 640px) {
+            /* Header adjustments */
+            header .flex {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            header .flex > div:first-child {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            /* Hero section */
+            .hero-section .text-5xl {
+                font-size: 2.5rem;
+                line-height: 1.2;
+            }
+            
+            .hero-section .text-xl {
+                font-size: 1rem;
+            }
+            
+            /* Recipe grid for mobile */
+            #recipesGrid, #categoryRecipesGrid {
+                display: flex;
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                gap: 1rem;
+                padding-bottom: 1rem;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none; /* Firefox */
+            }
+            
+            #recipesGrid::-webkit-scrollbar, 
+            #categoryRecipesGrid::-webkit-scrollbar {
+                display: none; /* Chrome, Safari, Edge */
+            }
+            
+            #recipesGrid .recipe-card, 
+            #categoryRecipesGrid .recipe-card {
+                flex: 0 0 calc(50% - 0.5rem);
+                scroll-snap-align: start;
+                min-width: 0;
+            }
+            
+            /* Featured recipes grid */
+            .grid.grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3 {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+            
+            /* Categories grid */
+            .grid.grid-cols-2.md\\:grid-cols-3.lg\\:grid-cols-4 {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+            
+            /* Benefits section */
+            .flex.flex-col.md\\:flex-row {
+                flex-direction: column;
+            }
+            
+            .md\\:w-1\\/2 {
+                width: 100%;
+            }
+            
+            /* Footer */
+            footer .grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            
+            /* Modal adjustments */
+            .recipe-modal .container {
+                padding: 0.5rem;
+            }
+            
+            .recipe-modal .max-w-4xl {
+                margin: 1rem auto;
+            }
+            
+            /* Search bar */
+            #searchBar .flex-col.md\\:flex-row {
+                flex-direction: column;
+            }
+            
+            /* Quick ingredient tags */
+            .flex.flex-wrap.gap-2 {
+                justify-content: center;
+            }
+            
+            /* Recipe card content */
+            .recipe-card .p-6 {
+                padding: 1rem;
+            }
+            
+            .recipe-card h3 {
+                font-size: 1rem;
+                line-height: 1.3;
+            }
+            
+            /* Hero search */
+            .hero-section .flex-col.sm\\:flex-row {
+                flex-direction: column;
+            }
+            
+            /* Navigation */
+            nav.hidden.md\\:flex {
+                display: flex;
+                justify-content: center;
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+        }
+        
+        /* Medium screen adjustments */
+        @media (min-width: 641px) and (max-width: 1024px) {
+            #recipesGrid, #categoryRecipesGrid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .grid.grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
 </head>
-<body>
-    <div class="app-container">
-        <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <h2><i class="fas fa-utensils"></i> Recipe Finder</h2>
-                <button class="close-sidebar" id="closeSidebar">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <nav class="sidebar-nav">
-                <a href="#home" class="nav-item active" data-page="home">
-                    <i class="fas fa-home"></i>
-                    <span>Home</span>
-                </a>
-                <a href="#search" class="nav-item" data-page="search">
-                    <i class="fas fa-search"></i>
-                    <span>Find Recipes</span>
-                </a>
-                <a href="#results" class="nav-item" data-page="results">
-                    <i class="fas fa-list"></i>
-                    <span>Recipes</span>
-                </a>
-                <a href="#about" class="nav-item" data-page="about">
-                    <i class="fas fa-info-circle"></i>
-                    <span>About</span>
-                </a>
-            </nav>
-        </aside>
+<body class="bg-custom-dark">
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Header -->
-            <header class="header">
-                <button class="menu-toggle" id="menuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <h1>Recipe Finder</h1>
-            </header>
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
 
-            <!-- Pages -->
-            <div class="pages-container">
-                <!-- Home Page -->
-                <section id="home-page" class="page active">
-                    <div class="hero-section">
-                        <div class="hero-content">
-                            <h1>Welcome to Recipe Finder</h1>
-                            <p class="hero-subtitle">Discover delicious recipes using ingredients you already have at home!</p>
-                            <div class="hero-features">
-                                <div class="feature">
-                                    <i class="fas fa-search"></i>
-                                    <h3>Search Recipes</h3>
-                                    <p>Find recipes based on your available ingredients</p>
-                                </div>
-                                <div class="feature">
-                                    <i class="fas fa-clock"></i>
-                                    <h3>Save Time</h3>
-                                    <p>Quick preparation times and easy instructions</p>
-                                </div>
-                                <div class="feature">
-                                    <i class="fas fa-heart"></i>
-                                    <h3>Food-Friendly</h3>
-                                    <p>Beautiful, food-inspired design</p>
-                                </div>
-                            </div>
-                            <button class="cta-button" data-page="search">
-                                Start Cooking <i class="fas fa-arrow-right"></i>
-                            </button>
-                        </div>
-                        <div class="hero-image">
-                            <div class="food-illustration">
-                                <i class="fas fa-utensils"></i>
-                            </div>
-                        </div>
+        <!-- Header -->
+        <header class="py-6">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <svg class="h-10 w-10 text-orange-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                    <div>
+                        <span class="font-bold text-2xl text-white">FlavorFind</span>
+                        <p class="text-xs text-gray-400">Discover & Cook</p>
                     </div>
-                </section>
+                </div>
+                <nav class="hidden md:flex items-center space-x-8">
+                    <a href="#" class="nav-link text-sm font-medium hover:text-orange-500 transition" data-page="home">HOME</a>
+                    <a href="#" class="nav-link text-sm font-medium hover:text-orange-500 transition" data-page="recipes">RECIPES</a>
+                    <a href="#" class="nav-link text-sm font-medium hover:text-orange-500 transition" data-page="categories">CATEGORIES</a>
+                    <a href="#" class="nav-link text-sm font-medium hover:text-orange-500 transition" data-page="about">ABOUT</a>
+                </nav>
+                <div class="flex items-center space-x-4">
+                    <button id="searchToggle" class="h-6 w-6 cursor-pointer hover:text-orange-500 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
 
-                <!-- Search Page -->
-                <section id="search-page" class="page">
-                    <div class="search-container">
-                        <h2>What's in Your Kitchen?</h2>
-                        <p class="search-subtitle">Enter the ingredients you have (comma separated)</p>
+            <!-- Search Bar -->
+            <div id="searchBar" class="hidden mt-4 bg-gray-800 p-4 rounded-lg">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <input 
+                        type="text" 
+                        id="ingredientInput"
+                        placeholder="Enter ingredients (e.g., chicken, tomatoes, pasta...)"
+                        class="flex-1 px-4 py-3 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    >
+                    <button onclick="searchRecipes()" class="btn-primary text-white font-semibold py-3 px-8 rounded-lg">
+                        FIND RECIPES
+                    </button>
+                </div>
+                
+                <!-- Quick Ingredient Tags -->
+                <div class="mt-4">
+                    <p class="text-sm text-gray-400 mb-2">Quick ingredients:</p>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="ingredient-tag px-3 py-1 rounded-full text-sm" onclick="addIngredient('chicken')">🍗 Chicken</span>
+                        <span class="ingredient-tag px-3 py-1 rounded-full text-sm" onclick="addIngredient('pasta')">🍝 Pasta</span>
+                        <span class="ingredient-tag px-3 py-1 rounded-full text-sm" onclick="addIngredient('tomato')">🍅 Tomato</span>
+                        <span class="ingredient-tag px-3 py-1 rounded-full text-sm" onclick="addIngredient('cheese')">🧀 Cheese</span>
+                        <span class="ingredient-tag px-3 py-1 rounded-full text-sm" onclick="addIngredient('rice')">🍚 Rice</span>
+                        <span class="ingredient-tag px-3 py-1 rounded-full text-sm" onclick="addIngredient('beef')">🥩 Beef</span>
+                        <span class="ingredient-tag px-3 py-1 rounded-full text-sm" onclick="addIngredient('fish')">🐟 Fish</span>
+                        <span class="ingredient-tag px-3 py-1 rounded-full text-sm" onclick="addIngredient('eggs')">🥚 Eggs</span>
+                        <span class="ingredient-tag px-3 py-1 rounded-full text-sm" onclick="addIngredient('mushrooms')">🍄 Mushrooms</span>
+                        <span class="ingredient-tag px-3 py-1 rounded-full text-sm" onclick="addIngredient('spinach')">🥬 Spinach</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- Home Page -->
+            <div id="home-page" class="page active">
+                <!-- Hero Section -->
+                <section id="heroSection" class="hero-section rounded-2xl my-8">
+                    <div class="flex flex-col items-center justify-center text-center p-8 md:p-16 lg:p-24 min-h-[70vh]">
+                        <h1 class="text-5xl lg:text-7xl font-bold leading-tight">Discover Amazing <span class="text-orange-500">Recipes</span></h1>
+                        <p class="mt-4 text-xl text-gray-300 max-w-2xl">Find perfect recipes based on ingredients you have. Cook delicious meals with our AI-powered recipe finder.</p>
                         
-                        <form id="ingredient-form" class="ingredient-form">
-                            <div class="input-group">
+                        <!-- Search CTA -->
+                        <div class="mt-8 w-full max-w-2xl">
+                            <div class="flex flex-col sm:flex-row gap-4">
                                 <input 
                                     type="text" 
-                                    id="ingredients-input" 
-                                    placeholder="e.g., chicken, rice, tomatoes, onions..."
-                                    required
+                                    id="heroIngredientInput"
+                                    placeholder="What ingredients do you have? (e.g., chicken, rice, vegetables...)"
+                                    class="flex-1 px-6 py-4 bg-white text-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg"
                                 >
-                                <button type="submit" class="search-btn">
-                                    <i class="fas fa-search"></i> Find Recipes
+                                <button onclick="searchRecipesFromHero()" class="btn-primary text-white font-semibold py-4 px-8 rounded-lg text-lg whitespace-nowrap">
+                                    🍳 FIND RECIPES
                                 </button>
                             </div>
-                        </form>
+                            
+                            <!-- Popular Ingredients -->
+                            <div class="mt-6">
+                                <p class="text-gray-300 mb-3">Try these popular ingredients:</p>
+                                <div class="flex flex-wrap justify-center gap-2">
+                                    <span class="ingredient-tag px-4 py-2 rounded-lg" onclick="addHeroIngredient('chicken')">🍗 Chicken</span>
+                                    <span class="ingredient-tag px-4 py-2 rounded-lg" onclick="addHeroIngredient('pasta')">🍝 Pasta</span>
+                                    <span class="ingredient-tag px-4 py-2 rounded-lg" onclick="addHeroIngredient('tomato')">🍅 Tomato</span>
+                                    <span class="ingredient-tag px-4 py-2 rounded-lg" onclick="addHeroIngredient('cheese')">🧀 Cheese</span>
+                                    <span class="ingredient-tag px-4 py-2 rounded-lg" onclick="addHeroIngredient('rice')">🍚 Rice</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
-                        <div class="popular-ingredients">
-                            <h3>Popular Ingredients:</h3>
-                            <div class="ingredient-tags">
-                                <span class="ingredient-tag" data-ingredient="chicken">Chicken</span>
-                                <span class="ingredient-tag" data-ingredient="pasta">Pasta</span>
-                                <span class="ingredient-tag" data-ingredient="tomatoes">Tomatoes</span>
-                                <span class="ingredient-tag" data-ingredient="cheese">Cheese</span>
-                                <span class="ingredient-tag" data-ingredient="eggs">Eggs</span>
-                                <span class="ingredient-tag" data-ingredient="rice">Rice</span>
+                <!-- Loading Section -->
+                <section id="loadingSection" class="hidden py-16">
+                    <div class="text-center">
+                        <div class="loading-spinner mx-auto mb-4"></div>
+                        <p class="text-gray-300">Finding delicious recipes for you...</p>
+                    </div>
+                </section>
+
+                <!-- Results Section -->
+                <section id="resultsSection" class="hidden py-16">
+                    <div class="flex justify-between items-center mb-8">
+                        <h2 class="text-3xl font-bold">Found <span id="recipeCount" class="text-orange-500">0</span> Recipes</h2>
+                        <button onclick="clearSearch()" class="text-gray-400 hover:text-white transition">
+                            Clear Search
+                        </button>
+                    </div>
+                    <div id="recipesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <!-- Recipes will be dynamically inserted here -->
+                    </div>
+                </section>
+
+                <!-- Featured Recipes -->
+                <section class="py-16 lg:py-24">
+                    <h2 class="text-4xl font-bold text-center mb-12">Featured Recipes</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <!-- Featured Recipe 1 -->
+                        <div class="recipe-card rounded-2xl overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                                 alt="Pizza" class="w-full h-48 object-cover">
+                            <div class="p-6">
+                                <h3 class="font-bold text-xl mb-2">Gourmet Pizza</h3>
+                                <p class="text-gray-400 text-sm mb-4">Fresh ingredients, perfect crust</p>
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    <span class="bg-gray-800 px-2 py-1 rounded text-xs">🍕 Italian</span>
+                                    <span class="bg-gray-800 px-2 py-1 rounded text-xs">⏱ 30min</span>
+                                </div>
+                                <button onclick="searchFeaturedRecipe('pizza dough,tomato sauce,cheese,pepperoni')" class="btn-primary text-white font-semibold py-2 px-6 rounded-lg w-full">
+                                    View Recipe
+                                </button>
                             </div>
                         </div>
 
-                        <div id="loading" class="loading hidden">
-                            <div class="spinner"></div>
-                            <p>Finding delicious recipes for you...</p>
+                        <!-- Featured Recipe 2 -->
+                        <div class="recipe-card rounded-2xl overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1563379926898-05f4575a45d8?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                                 alt="Pasta" class="w-full h-48 object-cover">
+                            <div class="p-6">
+                                <h3 class="font-bold text-xl mb-2">Creamy Pasta</h3>
+                                <p class="text-gray-400 text-sm mb-4">Rich and flavorful pasta dish</p>
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    <span class="bg-gray-800 px-2 py-1 rounded text-xs">🍝 Pasta</span>
+                                    <span class="bg-gray-800 px-2 py-1 rounded text-xs">⏱ 25min</span>
+                                </div>
+                                <button onclick="searchFeaturedRecipe('pasta,cream,cheese,garlic')" class="btn-primary text-white font-semibold py-2 px-6 rounded-lg w-full">
+                                    View Recipe
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Featured Recipe 3 -->
+                        <div class="recipe-card rounded-2xl overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                                 alt="Salad" class="w-full h-48 object-cover">
+                            <div class="p-6">
+                                <h3 class="font-bold text-xl mb-2">Fresh Salad Bowl</h3>
+                                <p class="text-gray-400 text-sm mb-4">Healthy and refreshing</p>
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    <span class="bg-gray-800 px-2 py-1 rounded text-xs">🥗 Healthy</span>
+                                    <span class="bg-gray-800 px-2 py-1 rounded text-xs">⏱ 15min</span>
+                                </div>
+                                <button onclick="searchFeaturedRecipe('lettuce,tomato,cucumber,olive oil')" class="btn-primary text-white font-semibold py-2 px-6 rounded-lg w-full">
+                                    View Recipe
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Featured African Recipe 1 -->
+                        <div class="recipe-card rounded-2xl overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1586190848861-99aa4a171e90?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                                 alt="Jollof Rice" class="w-full h-48 object-cover">
+                            <div class="p-6">
+                                <h3 class="font-bold text-xl mb-2">Jollof Rice</h3>
+                                <p class="text-gray-400 text-sm mb-4">West African classic dish</p>
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    <span class="bg-gray-800 px-2 py-1 rounded text-xs">🍚 African</span>
+                                    <span class="bg-gray-800 px-2 py-1 rounded text-xs">⏱ 45min</span>
+                                </div>
+                                <button onclick="searchFeaturedRecipe('rice,tomatoes,onions,peppers,chicken')" class="btn-primary text-white font-semibold py-2 px-6 rounded-lg w-full">
+                                    View Recipe
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Featured African Recipe 2 -->
+                        <div class="recipe-card rounded-2xl overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1594048504350-6dd4e0446d8c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                                 alt="Injera" class="w-full h-48 object-cover">
+                            <div class="p-6">
+                                <h3 class="font-bold text-xl mb-2">Injera with Stew</h3>
+                                <p class="text-gray-400 text-sm mb-4">Ethiopian traditional meal</p>
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    <span class="bg-gray-800 px-2 py-1 rounded text-xs">🥘 Ethiopian</span>
+                                    <span class="bg-gray-800 px-2 py-1 rounded text-xs">⏱ 60min</span>
+                                </div>
+                                <button onclick="searchFeaturedRecipe('teff flour,water,lentils,spices')" class="btn-primary text-white font-semibold py-2 px-6 rounded-lg w-full">
+                                    View Recipe
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Featured African Recipe 3 -->
+                        <div class="recipe-card rounded-2xl overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1594048504265-32d3b503ccde?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                                 alt="Tagine" class="w-full h-48 object-cover">
+                            <div class="p-6">
+                                <h3 class="font-bold text-xl mb-2">Moroccan Tagine</h3>
+                                <p class="text-gray-400 text-sm mb-4">Slow-cooked savory stew</p>
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    <span class="bg-gray-800 px-2 py-1 rounded text-xs">🍲 Moroccan</span>
+                                    <span class="bg-gray-800 px-2 py-1 rounded text-xs">⏱ 90min</span>
+                                </div>
+                                <button onclick="searchFeaturedRecipe('lamb,apricots,almonds,spices,couscous')" class="btn-primary text-white font-semibold py-2 px-6 rounded-lg w-full">
+                                    View Recipe
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </section>
 
-                <!-- Results Page -->
-                <section id="results-page" class="page">
-                    <div class="results-header">
-                        <h2>Recipe Suggestions</h2>
-                        <p id="results-subtitle">Based on your ingredients</p>
-                        <button class="back-to-search" data-page="search">
-                            <i class="fas fa-arrow-left"></i> Search Again
-                        </button>
-                    </div>
-                    <div id="recipes-container" class="recipes-grid">
-                        <!-- Recipe cards will be inserted here -->
-                    </div>
-                    <div id="no-results" class="no-results hidden">
-                        <i class="fas fa-search"></i>
-                        <h3>No recipes found</h3>
-                        <p>Try different ingredients or check your spelling</p>
-                    </div>
-                </section>
-
-                <!-- Recipe Details Page -->
-                <section id="details-page" class="page">
-                    <div class="details-container">
-                        <button class="back-button" id="backToResults">
-                            <i class="fas fa-arrow-left"></i> Back to Recipes
-                        </button>
-                        <div id="recipe-details">
-                            <!-- Recipe details will be inserted here -->
+                <!-- Benefits Section -->
+                <section class="py-16 lg:py-24">
+                    <div class="flex flex-col md:flex-row items-center gap-12">
+                        <div class="md:w-1/2 text-center md:text-left">
+                            <h2 class="text-4xl lg:text-5xl font-bold">Smart Recipe Finder</h2>
+                            <p class="mt-4 text-gray-400 text-lg">Find recipes based on what you have. Reduce food waste and discover new favorite dishes.</p>
+                            <div class="mt-6 space-y-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-orange-500 p-2 rounded-full">
+                                        <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    </div>
+                                    <span>AI-powered recipe matching</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-orange-500 p-2 rounded-full">
+                                        <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                        </svg>
+                                    </div>
+                                    <span>Thousands of recipes</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-orange-500 p-2 rounded-full">
+                                        <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                        </svg>
+                                    </div>
+                                    <span>Quick and easy preparation</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="md:w-1/2">
+                            <img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                                 alt="Cooking Preparation" class="rounded-2xl w-full shadow-2xl">
                         </div>
                     </div>
                 </section>
+            </div>
 
-                <!-- About Page -->
-                <section id="about-page" class="page">
-                    <div class="about-container">
-                        <h2>About Recipe Finder</h2>
-                        <div class="about-content">
-                            <div class="about-text">
-                                <p>Recipe Finder helps you discover delicious meals using ingredients you already have at home. No more food waste and no more wondering what to cook!</p>
-                                
-                                <h3>How it works:</h3>
-                                <ul>
-                                    <li>Enter the ingredients you have available</li>
-                                    <li>Get personalized recipe suggestions</li>
-                                    <li>View detailed instructions and cooking times</li>
-                                    <li>Cook delicious meals with what you have</li>
-                                </ul>
+            <!-- Recipes Page -->
+            <div id="recipes-page" class="page">
+                <section class="py-16">
+                    <h2 class="text-4xl font-bold text-center mb-12">All Recipes</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <!-- Recipes will be loaded here -->
+                    </div>
+                </section>
+            </div>
 
-                                <h3>Features:</h3>
-                                <div class="features-grid">
-                                    <div class="feature-card">
-                                        <i class="fas fa-mobile-alt"></i>
-                                        <h4>Responsive Design</h4>
-                                        <p>Works perfectly on all devices</p>
-                                    </div>
-                                    <div class="feature-card">
-                                        <i class="fas fa-bolt"></i>
-                                        <h4>Quick Results</h4>
-                                        <p>Instant recipe suggestions</p>
-                                    </div>
-                                    <div class="feature-card">
-                                        <i class="fas fa-utensil-spoon"></i>
-                                        <h4>Spoonacular API</h4>
-                                        <p>Powered by extensive recipe database</p>
-                                    </div>
+            <!-- Categories Page -->
+            <div id="categories-page" class="page">
+                <section class="py-16">
+                    <h2 class="text-4xl font-bold text-center mb-12">Recipe Categories</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        <div class="bg-gray-800 rounded-2xl p-6 text-center cursor-pointer hover:bg-gray-700 transition" onclick="searchByCategory('italian')">
+                            <i class="fas fa-pizza-slice text-4xl text-orange-500 mb-4"></i>
+                            <h3 class="font-bold text-lg">Italian</h3>
+                        </div>
+                        <div class="bg-gray-800 rounded-2xl p-6 text-center cursor-pointer hover:bg-gray-700 transition" onclick="searchByCategory('mexican')">
+                            <i class="fas fa-pepper-hot text-4xl text-orange-500 mb-4"></i>
+                            <h3 class="font-bold text-lg">Mexican</h3>
+                        </div>
+                        <div class="bg-gray-800 rounded-2xl p-6 text-center cursor-pointer hover:bg-gray-700 transition" onclick="searchByCategory('asian')">
+                            <i class="fas fa-utensils text-4xl text-orange-500 mb-4"></i>
+                            <h3 class="font-bold text-lg">Asian</h3>
+                        </div>
+                        <div class="bg-gray-800 rounded-2xl p-6 text-center cursor-pointer hover:bg-gray-700 transition" onclick="searchByCategory('african')">
+                            <i class="fas fa-globe-africa text-4xl text-orange-500 mb-4"></i>
+                            <h3 class="font-bold text-lg">African</h3>
+                        </div>
+                        <div class="bg-gray-800 rounded-2xl p-6 text-center cursor-pointer hover:bg-gray-700 transition" onclick="searchByCategory('vegetarian')">
+                            <i class="fas fa-leaf text-4xl text-orange-500 mb-4"></i>
+                            <h3 class="font-bold text-lg">Vegetarian</h3>
+                        </div>
+                        <div class="bg-gray-800 rounded-2xl p-6 text-center cursor-pointer hover:bg-gray-700 transition" onclick="searchByCategory('dessert')">
+                            <i class="fas fa-ice-cream text-4xl text-orange-500 mb-4"></i>
+                            <h3 class="font-bold text-lg">Desserts</h3>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Category Results Section -->
+                <section id="categoryResultsSection" class="hidden py-16">
+                    <div class="flex justify-between items-center mb-8">
+                        <h2 class="text-3xl font-bold">Found <span id="categoryRecipeCount" class="text-orange-500">0</span> Recipes</h2>
+                        <button onclick="clearCategorySearch()" class="text-gray-400 hover:text-white transition">
+                            Clear Search
+                        </button>
+                    </div>
+                    <div id="categoryRecipesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <!-- Category recipes will be dynamically inserted here -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- About Page -->
+            <div id="about-page" class="page">
+                <section class="py-16">
+                    <div class="max-w-4xl mx-auto">
+                        <h2 class="text-4xl font-bold text-center mb-12">About FlavorFind</h2>
+                        <div class="bg-gray-800 rounded-2xl p-8">
+                            <p class="text-lg mb-6">
+                                FlavorFind is your ultimate recipe discovery platform powered by advanced AI technology. 
+                                We help you find the perfect recipes based on ingredients you already have in your kitchen.
+                            </p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+                                <div>
+                                    <h3 class="text-2xl font-bold mb-4 text-orange-500">Our Mission</h3>
+                                    <p>To reduce food waste and make cooking accessible to everyone by providing intelligent recipe recommendations.</p>
+                                </div>
+                                <div>
+                                    <h3 class="text-2xl font-bold mb-4 text-orange-500">How It Works</h3>
+                                    <p>Simply enter the ingredients you have, and our AI will find recipes that match your available items.</p>
                                 </div>
                             </div>
                         </div>
@@ -196,6 +579,440 @@
         </main>
     </div>
 
-    <script src="script.js"></script>
+    <!-- Recipe Modal -->
+    <div id="recipeModal" class="recipe-modal">
+        <div class="container mx-auto px-4 py-8">
+            <div class="bg-gray-800 rounded-2xl max-w-4xl mx-auto">
+                <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+                    <h2 id="modalTitle" class="text-2xl font-bold">Recipe Details</h2>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                </div>
+                <div id="modalContent" class="p-6 max-h-96 overflow-y-auto">
+                    <!-- Recipe details will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-black mt-16 lg:mt-24 py-16">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 text-center md:text-left">
+            <div>
+                <div class="flex items-center space-x-2 mb-4 justify-center md:justify-start">
+                    <svg class="h-8 w-8 text-orange-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                    <span class="font-bold text-xl">FlavorFind</span>
+                </div>
+                <p class="text-gray-400">Discover amazing recipes based on your ingredients. Cook smarter, eat better.</p>
+            </div>
+            <div>
+                <h4 class="font-bold text-lg mb-4">FEATURES</h4>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-center md:justify-start gap-3">
+                        <div class="bg-gray-800 p-2 rounded-full">
+                            <svg class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h5 class="font-semibold">AI MATCHING</h5>
+                            <p class="text-sm text-gray-400">Smart recipe suggestions</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center md:justify-start gap-3">
+                        <div class="bg-gray-800 p-2 rounded-full">
+                            <svg class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h5 class="font-semibold">SAVE TIME</h5>
+                            <p class="text-sm text-gray-400">Quick meal planning</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <h4 class="font-bold text-lg mb-4">QUICK LINKS</h4>
+                <ul class="space-y-2 text-gray-400">
+                    <li><a href="#" class="nav-link hover:text-orange-500 transition" data-page="home">Home</a></li>
+                    <li><a href="#" class="nav-link hover:text-orange-500 transition" data-page="recipes">Recipes</a></li>
+                    <li><a href="#" class="nav-link hover:text-orange-500 transition" data-page="categories">Categories</a></li>
+                    <li><a href="#" class="nav-link hover:text-orange-500 transition" data-page="about">About</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold text-lg mb-4">NEWSLETTER</h4>
+                <p class="text-gray-400 mb-4">Get weekly recipe inspiration</p>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="email" placeholder="Your email" class="px-4 py-2 bg-gray-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <button class="btn-primary text-white font-semibold py-2 px-4 rounded-lg">Subscribe</button>
+                </div>
+            </div>
+        </div>
+        <div class="text-center text-gray-500 text-sm mt-12 pt-8 border-t border-gray-800">
+            <p>&copy; 2024 FlavorFind. All Rights Reserved. | Discover, Cook, Enjoy</p>
+        </div>
+    </footer>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = 'http://localhost:3000'; // Change this to your backend URL in production
+
+        // DOM Elements
+        const searchToggle = document.getElementById('searchToggle');
+        const searchBar = document.getElementById('searchBar');
+        const ingredientInput = document.getElementById('ingredientInput');
+        const heroIngredientInput = document.getElementById('heroIngredientInput');
+        const heroSection = document.getElementById('heroSection');
+        const loadingSection = document.getElementById('loadingSection');
+        const resultsSection = document.getElementById('resultsSection');
+        const recipesGrid = document.getElementById('recipesGrid');
+        const recipeCount = document.getElementById('recipeCount');
+        const recipeModal = document.getElementById('recipeModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalContent = document.getElementById('modalContent');
+        const categoryResultsSection = document.getElementById('categoryResultsSection');
+        const categoryRecipesGrid = document.getElementById('categoryRecipesGrid');
+        const categoryRecipeCount = document.getElementById('categoryRecipeCount');
+
+        // Page navigation
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = e.target.getAttribute('data-page');
+                showPage(page);
+            });
+        });
+
+        function showPage(pageName) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Show selected page
+            document.getElementById(`${pageName}-page`).classList.add('active');
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+
+        // Toggle search bar
+        searchToggle.addEventListener('click', () => {
+            searchBar.classList.toggle('hidden');
+        });
+
+        // Add ingredient from quick tags
+        function addIngredient(ingredient) {
+            const current = ingredientInput.value;
+            if (current) {
+                ingredientInput.value = current + ', ' + ingredient;
+            } else {
+                ingredientInput.value = ingredient;
+            }
+            ingredientInput.focus();
+        }
+
+        function addHeroIngredient(ingredient) {
+            const current = heroIngredientInput.value;
+            if (current) {
+                heroIngredientInput.value = current + ', ' + ingredient;
+            } else {
+                heroIngredientInput.value = ingredient;
+            }
+            heroIngredientInput.focus();
+        }
+
+        // Search recipes from header
+        async function searchRecipes() {
+            const ingredients = ingredientInput.value.trim();
+            if (!ingredients) {
+                alert('Please enter some ingredients');
+                return;
+            }
+            await performSearch(ingredients);
+        }
+
+        // Search recipes from hero section
+        async function searchRecipesFromHero() {
+            const ingredients = heroIngredientInput.value.trim();
+            if (!ingredients) {
+                alert('Please enter some ingredients');
+                return;
+            }
+            await performSearch(ingredients);
+        }
+
+        // Search featured recipes
+        async function searchFeaturedRecipe(ingredients) {
+            await performSearch(ingredients);
+        }
+
+        // Search by category
+        async function searchByCategory(category) {
+            const categoryIngredients = {
+                'italian': 'pasta,tomato,cheese,olive oil,basil',
+                'mexican': 'beans,rice,avocado,tortilla,chili',
+                'asian': 'rice,noodles,soy sauce,ginger,garlic',
+                'african': 'rice,beans,plantains,spices,chicken',
+                'vegetarian': 'vegetables,tofu,beans,lentils,cheese',
+                'dessert': 'sugar,flour,eggs,butter,chocolate'
+            };
+            
+            if (categoryIngredients[category]) {
+                await performCategorySearch(categoryIngredients[category], category);
+            }
+        }
+
+        // Perform the actual search
+        async function performSearch(ingredients) {
+            try {
+                // Show loading, hide hero and search bar
+                loadingSection.classList.remove('hidden');
+                heroSection.classList.add('hidden');
+                searchBar.classList.add('hidden');
+                resultsSection.classList.add('hidden');
+                recipesGrid.innerHTML = '';
+
+                console.log('Searching for recipes with ingredients:', ingredients);
+
+                const response = await fetch(`${API_BASE_URL}/api/recipes?ingredients=${encodeURIComponent(ingredients)}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const recipes = await response.json();
+                
+                // Hide loading, show results
+                loadingSection.classList.add('hidden');
+                resultsSection.classList.remove('hidden');
+                
+                // Update recipe count
+                recipeCount.textContent = recipes.length;
+                
+                // Display recipes
+                displayRecipes(recipes, recipesGrid);
+                
+            } catch (error) {
+                console.error('Error searching recipes:', error);
+                loadingSection.classList.add('hidden');
+                heroSection.classList.remove('hidden');
+                alert('Error searching for recipes. Please try again.');
+            }
+        }
+
+        // Perform category search
+        async function performCategorySearch(ingredients, categoryName) {
+            try {
+                // Show loading, hide category results
+                loadingSection.classList.remove('hidden');
+                categoryResultsSection.classList.add('hidden');
+                categoryRecipesGrid.innerHTML = '';
+
+                console.log('Searching for category recipes with ingredients:', ingredients);
+
+                const response = await fetch(`${API_BASE_URL}/api/recipes?ingredients=${encodeURIComponent(ingredients)}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const recipes = await response.json();
+                
+                // Hide loading, show category results
+                loadingSection.classList.add('hidden');
+                categoryResultsSection.classList.remove('hidden');
+                
+                // Update recipe count
+                categoryRecipeCount.textContent = recipes.length;
+                
+                // Display recipes
+                displayRecipes(recipes, categoryRecipesGrid);
+                
+            } catch (error) {
+                console.error('Error searching category recipes:', error);
+                loadingSection.classList.add('hidden');
+                alert('Error searching for recipes. Please try again.');
+            }
+        }
+
+        // Display recipes in the grid
+        function displayRecipes(recipes, gridElement) {
+            gridElement.innerHTML = '';
+            
+            if (recipes.length === 0) {
+                gridElement.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fas fa-search text-6xl text-gray-500 mb-4"></i>
+                        <h3 class="text-2xl font-bold text-gray-400">No recipes found</h3>
+                        <p class="text-gray-500 mt-2">Try different ingredients or check your spelling</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            recipes.forEach(recipe => {
+                const recipeCard = document.createElement('div');
+                recipeCard.className = 'recipe-card rounded-2xl overflow-hidden fade-in';
+                recipeCard.innerHTML = `
+                    <img src="${recipe.image}" 
+                         alt="${recipe.title}" 
+                         class="w-full h-48 object-cover"
+                         onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'">
+                    <div class="p-6">
+                        <h3 class="font-bold text-xl mb-2 line-clamp-2">${recipe.title}</h3>
+                        
+                        <!-- Used Ingredients -->
+                        <div class="mb-3">
+                            <p class="text-sm text-gray-400 mb-1">Uses:</p>
+                            <div class="flex flex-wrap gap-1">
+                                ${recipe.usedIngredients && recipe.usedIngredients.slice(0, 3).map(ing => 
+                                    `<span class="bg-green-900 text-green-300 px-2 py-1 rounded text-xs">${ing.name}</span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                        
+                        <!-- Missing Ingredients -->
+                        ${recipe.missedIngredients && recipe.missedIngredients.length > 0 ? `
+                        <div class="mb-4">
+                            <p class="text-sm text-gray-400 mb-1">Missing:</p>
+                            <div class="flex flex-wrap gap-1">
+                                ${recipe.missedIngredients.slice(0, 3).map(ing => 
+                                    `<span class="bg-gray-700 text-gray-300 px-2 py-1 rounded text-xs">${ing.name}</span>`
+                                ).join('')}
+                                ${recipe.missedIngredients.length > 3 ? `<span class="text-xs text-gray-500">+${recipe.missedIngredients.length - 3} more</span>` : ''}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <button onclick="viewRecipeDetails(${recipe.id})" class="btn-primary text-white font-semibold py-2 px-6 rounded-lg w-full">
+                            View Recipe
+                        </button>
+                    </div>
+                `;
+                gridElement.appendChild(recipeCard);
+            });
+        }
+
+        // View recipe details
+        async function viewRecipeDetails(recipeId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/recipes/${recipeId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const recipe = await response.json();
+                
+                // Display recipe in modal
+                modalTitle.textContent = recipe.title;
+                modalContent.innerHTML = `
+                    <div class="mb-6">
+                        <img src="${recipe.image}" alt="${recipe.title}" class="w-full h-64 object-cover rounded-lg">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="text-xl font-bold mb-4 text-orange-500">Ingredients</h3>
+                            <ul class="space-y-2">
+                                ${recipe.extendedIngredients ? recipe.extendedIngredients.map(ingredient => 
+                                    `<li class="flex items-center gap-2">
+                                        <i class="fas fa-check text-green-500"></i>
+                                        <span>${ingredient.original}</span>
+                                    </li>`
+                                ).join('') : '<li>No ingredients information available</li>'}
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold mb-4 text-orange-500">Instructions</h3>
+                            <div class="space-y-4">
+                                ${recipe.analyzedInstructions && recipe.analyzedInstructions[0] ? 
+                                    recipe.analyzedInstructions[0].steps.map(step => 
+                                        `<div class="flex gap-3">
+                                            <span class="bg-orange-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">${step.number}</span>
+                                            <p>${step.step}</p>
+                                        </div>`
+                                    ).join('') : 
+                                    '<p>No instructions available. Please visit the source website for instructions.</p>'
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    ${recipe.sourceUrl ? `
+                    <div class="mt-6 text-center">
+                        <a href="${recipe.sourceUrl}" target="_blank" class="btn-primary inline-flex items-center gap-2 text-white font-semibold py-2 px-6 rounded-lg">
+                            <i class="fas fa-external-link-alt"></i>
+                            View Full Recipe on ${recipe.sourceName || 'Source Website'}
+                        </a>
+                    </div>
+                    ` : ''}
+                `;
+                
+                recipeModal.classList.add('active');
+                
+            } catch (error) {
+                console.error('Error fetching recipe details:', error);
+                alert('Error loading recipe details. Please try again.');
+            }
+        }
+
+        // Close modal
+        function closeModal() {
+            recipeModal.classList.remove('active');
+        }
+
+        // Clear search results
+        function clearSearch() {
+            resultsSection.classList.add('hidden');
+            heroSection.classList.remove('hidden');
+            searchBar.classList.remove('hidden');
+            ingredientInput.value = '';
+            heroIngredientInput.value = '';
+            recipesGrid.innerHTML = '';
+        }
+
+        // Clear category search results
+        function clearCategorySearch() {
+            categoryResultsSection.classList.add('hidden');
+            categoryRecipesGrid.innerHTML = '';
+        }
+
+        // Allow pressing Enter to search
+        ingredientInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchRecipes();
+            }
+        });
+
+        heroIngredientInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchRecipesFromHero();
+            }
+        });
+
+        // Close modal when clicking outside
+        recipeModal.addEventListener('click', (e) => {
+            if (e.target === recipeModal) {
+                closeModal();
+            }
+        });
+
+        // Test API connection on load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('API Health:', data);
+                } else {
+                    console.error('API health check failed');
+                }
+            } catch (error) {
+                console.error('API connection test failed:', error);
+                alert('Warning: Cannot connect to the backend server. Please make sure the backend is running on ' + API_BASE_URL);
+            }
+        });
+    </script>
 </body>
 </html>
