@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,13 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  RefreshControl,
+  Image,
 } from 'react-native';
 import { COLORS } from '../constants/config';
-import Icon from 'react-native-vector-icons/Ionicons';
 import { searchRecipesByIngredients } from '../services/api';
 import RecipeCard from '../components/RecipeCard';
-import LoadingSpinner from '../components/LoadingSpinner';
+import DancingChefLoader from '../components/DancingChefLoader';
 
 const POPULAR_INGREDIENTS = ['chicken', 'pasta', 'rice', 'beef', 'fish', 'vegetables'];
 
@@ -22,6 +23,7 @@ const RecipesScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [recipes, setRecipes] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleSearch = async () => {
     if (!ingredients.trim()) {
@@ -51,8 +53,23 @@ const RecipesScreen = ({ navigation }) => {
     navigation.navigate('RecipeDetail', { recipeId });
   };
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    
+    if (hasSearched && ingredients) {
+      try {
+        const results = await searchRecipesByIngredients(ingredients);
+        setRecipes(results);
+      } catch (error) {
+        Alert.alert('Error', 'Failed to refresh recipes');
+      }
+    }
+    
+    setRefreshing(false);
+  }, [hasSearched, ingredients]);
+
   if (loading) {
-    return <LoadingSpinner />;
+    return <DancingChefLoader message="Searching for recipes..." />;
   }
 
   return (
@@ -69,7 +86,10 @@ const RecipesScreen = ({ navigation }) => {
             returnKeyType="search"
           />
           <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-            <Icon name="search" size={20} color="#fff" />
+            <Image 
+              source={{ uri: 'https://cdn-icons-png.flaticon.com/512/149/149852.png' }}
+              style={styles.buttonIcon}
+            />
           </TouchableOpacity>
         </View>
 
@@ -106,9 +126,20 @@ const RecipesScreen = ({ navigation }) => {
             )}
             contentContainerStyle={styles.recipesList}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[COLORS.primary]}
+                tintColor={COLORS.primary}
+              />
+            }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Icon name="search" size={48} color={COLORS.textSecondary} />
+                <Image 
+                  source={{ uri: 'https://cdn-icons-png.flaticon.com/512/149/149852.png' }}
+                  style={styles.emptyIcon}
+                />
                 <Text style={styles.emptyTitle}>No recipes found</Text>
                 <Text style={styles.emptyText}>
                   Try different ingredients or check your spelling
@@ -119,7 +150,10 @@ const RecipesScreen = ({ navigation }) => {
         </View>
       ) : (
         <View style={styles.welcomeContainer}>
-          <Icon name="restaurant" size={64} color={COLORS.primary} />
+          <Image 
+            source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2833/2833805.png' }}
+            style={styles.welcomeIcon}
+          />
           <Text style={styles.welcomeTitle}>Search for Recipes</Text>
           <Text style={styles.welcomeText}>
             Enter ingredients you have and we'll find matching recipes
@@ -160,6 +194,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     width: 50,
+  },
+  buttonIcon: {
+    width: 20,
+    height: 20,
+    tintColor: '#fff',
   },
   popularContainer: {
     marginTop: 12,
@@ -202,6 +241,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 40,
   },
+  welcomeIcon: {
+    width: 80,
+    height: 80,
+    marginBottom: 16,
+    tintColor: COLORS.primary,
+  },
   welcomeTitle: {
     color: COLORS.text,
     fontSize: 22,
@@ -218,6 +263,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
+  },
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    marginBottom: 16,
+    tintColor: COLORS.textSecondary,
   },
   emptyTitle: {
     color: COLORS.text,

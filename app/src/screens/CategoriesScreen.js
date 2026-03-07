@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,53 +8,54 @@ import {
   SafeAreaView,
   FlatList,
   Alert,
+  RefreshControl,
+  Image,
 } from 'react-native';
 import { COLORS } from '../constants/config';
-import Icon from 'react-native-vector-icons/Ionicons';
 import { searchRecipesByIngredients } from '../services/api';
 import RecipeCard from '../components/RecipeCard';
-import LoadingSpinner from '../components/LoadingSpinner';
+import DancingChefLoader from '../components/DancingChefLoader';
 
 const CATEGORIES = [
   { 
     id: 'italian', 
     name: 'Italian', 
-    icon: 'pizza', 
+    icon: 'https://cdn-icons-png.flaticon.com/512/1404/1404945.png',
     ingredients: 'pasta,tomato,cheese,olive oil,basil,garlic',
     color: '#e87a3d'
   },
   { 
     id: 'mexican', 
     name: 'Mexican', 
-    icon: 'flame', 
+    icon: 'https://cdn-icons-png.flaticon.com/512/2942/2942690.png',
     ingredients: 'beans,rice,avocado,tortilla,chili,cilantro',
     color: '#e83d3d'
   },
   { 
     id: 'asian', 
     name: 'Asian', 
-    icon: 'restaurant', 
+    icon: 'https://cdn-icons-png.flaticon.com/512/3174/3174883.png',
     ingredients: 'rice,noodles,soy sauce,ginger,garlic,sesame',
     color: '#3de87a'
   },
   { 
     id: 'african', 
     name: 'African', 
-    icon: 'globe', 
+    icon: 'https://cdn-icons-png.flaticon.com/512/2579/2579021.png',
     ingredients: 'rice,beans,plantains,peanuts,chicken,tomatoes',
     color: '#e8a63d'
   },
   { 
     id: 'vegetarian', 
     name: 'Vegetarian', 
-    icon: 'leaf', 
+    icon: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
     ingredients: 'vegetables,tofu,beans,lentils,cheese,mushrooms',
     color: '#4ade80'
   },
   { 
     id: 'dessert', 
     name: 'Desserts', 
-    icon: 'ice-cream', 
+    icon: 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png',
     ingredients: 'sugar,flour,eggs,butter,chocolate,vanilla',
     color: '#e83d9e'
   },
@@ -65,6 +66,7 @@ const CategoriesScreen = ({ navigation }) => {
   const [recipes, setRecipes] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [showResults, setShowResults] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleCategoryPress = async (category) => {
     setSelectedCategory(category);
@@ -92,14 +94,39 @@ const CategoriesScreen = ({ navigation }) => {
     setSelectedCategory(null);
   };
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    
+    if (showResults && selectedCategory) {
+      try {
+        const results = await searchRecipesByIngredients(selectedCategory.ingredients);
+        setRecipes(results);
+      } catch (error) {
+        Alert.alert('Error', 'Failed to refresh recipes');
+      }
+    }
+    
+    setRefreshing(false);
+  }, [showResults, selectedCategory]);
+
   if (loading) {
-    return <LoadingSpinner />;
+    return <DancingChefLoader message={`Loading ${selectedCategory?.name} recipes...`} />;
   }
 
   return (
     <SafeAreaView style={styles.container}>
       {!showResults ? (
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.primary]}
+              tintColor={COLORS.primary}
+            />
+          }
+        >
           <View style={styles.header}>
             <Text style={styles.title}>Recipe Categories</Text>
             <Text style={styles.subtitle}>Choose a category to explore</Text>
@@ -113,7 +140,10 @@ const CategoriesScreen = ({ navigation }) => {
                 onPress={() => handleCategoryPress(category)}
               >
                 <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
-                  <Icon name={category.icon} size={30} color="#fff" />
+                  <Image 
+                    source={{ uri: category.icon }}
+                    style={styles.categoryIconImage}
+                  />
                 </View>
                 <Text style={styles.categoryName}>{category.name}</Text>
                 <Text style={styles.categoryDesc}>Delicious {category.name} recipes</Text>
@@ -133,7 +163,10 @@ const CategoriesScreen = ({ navigation }) => {
               </Text>
             </View>
             <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-              <Icon name="close" size={20} color={COLORS.textSecondary} />
+              <Image 
+                source={{ uri: 'https://cdn-icons-png.flaticon.com/512/1828/1828778.png' }}
+                style={styles.closeIcon}
+              />
             </TouchableOpacity>
           </View>
           
@@ -148,9 +181,20 @@ const CategoriesScreen = ({ navigation }) => {
             )}
             contentContainerStyle={styles.recipesList}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[COLORS.primary]}
+                tintColor={COLORS.primary}
+              />
+            }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Icon name="restaurant" size={48} color={COLORS.textSecondary} />
+                <Image 
+                  source={{ uri: 'https://cdn-icons-png.flaticon.com/512/149/149852.png' }}
+                  style={styles.emptyIcon}
+                />
                 <Text style={styles.emptyTitle}>No recipes found</Text>
                 <Text style={styles.emptyText}>
                   Try another category
@@ -205,6 +249,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  categoryIconImage: {
+    width: 30,
+    height: 30,
+    tintColor: '#fff',
+  },
   categoryName: {
     color: COLORS.text,
     fontSize: 16,
@@ -239,6 +288,11 @@ const styles = StyleSheet.create({
   clearButton: {
     padding: 8,
   },
+  closeIcon: {
+    width: 20,
+    height: 20,
+    tintColor: COLORS.textSecondary,
+  },
   recipesList: {
     paddingBottom: 20,
   },
@@ -246,6 +300,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
+  },
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    marginBottom: 16,
+    tintColor: COLORS.textSecondary,
   },
   emptyTitle: {
     color: COLORS.text,
