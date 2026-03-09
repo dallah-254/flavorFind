@@ -1,12 +1,27 @@
 import { API_BASE_URL } from '../constants/config';
+import { Alert } from 'react-native';
 
 // Test API connection
 export const testConnection = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/health`);
-    return await response.json();
+    const response = await fetch(`${API_BASE_URL}/health`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ Connected to AWS backend:', data);
+    
+    // Show key usage info if available
+    if (data.keys) {
+      console.log(`🔑 Active keys: ${data.keys.active}/${data.keys.total}`);
+      console.log(`📊 Today's usage: ${data.usage.today}/${data.usage.capacity}`);
+    }
+    
+    return data;
   } catch (error) {
-    console.error('API Connection Error:', error);
+    console.error('❌ API Connection Error:', error);
     throw error;
   }
 };
@@ -14,18 +29,42 @@ export const testConnection = async () => {
 // Search recipes by ingredients
 export const searchRecipesByIngredients = async (ingredients) => {
   try {
+    console.log(`🔍 Searching recipes for: ${ingredients}`);
+    
     const response = await fetch(
-      `${API_BASE_URL}/api/recipes?ingredients=${encodeURIComponent(ingredients)}`
+      `${API_BASE_URL}/recipes?ingredients=${encodeURIComponent(ingredients)}`
     );
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    // Check for rate limit headers
+    const keyUsed = response.headers.get('X-Key-Used');
+    const remaining = response.headers.get('X-Requests-Remaining');
+    
+    if (keyUsed) {
+      console.log(`🔑 Using key: ${keyUsed}, ${remaining} requests remaining today`);
     }
     
-    return await response.json();
+    if (!response.ok) {
+      // Try to parse error message from response
+      const errorData = await response.json().catch(() => ({}));
+      
+      if (response.status === 429) {
+        throw new Error('Rate limit reached. All API keys exhausted for today. Please try again tomorrow.');
+      }
+      
+      throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Found ${data.length} recipes`);
+    
+    // Log key usage stats if available
+    if (remaining) {
+      console.log(`📊 Requests remaining today: ${remaining}`);
+    }
+    
+    return data;
   } catch (error) {
-    console.error('Error searching recipes:', error);
+    console.error('❌ Error searching recipes:', error);
     throw error;
   }
 };
@@ -33,16 +72,67 @@ export const searchRecipesByIngredients = async (ingredients) => {
 // Get recipe details by ID
 export const getRecipeDetails = async (recipeId) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/recipes/${recipeId}`);
+    console.log(`🔍 Fetching recipe details for ID: ${recipeId}`);
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    const response = await fetch(`${API_BASE_URL}/recipes/${recipeId}`);
+    
+    // Check for rate limit headers
+    const keyUsed = response.headers.get('X-Key-Used');
+    const remaining = response.headers.get('X-Requests-Remaining');
+    
+    if (keyUsed) {
+      console.log(`🔑 Using key: ${keyUsed}, ${remaining} requests remaining today`);
     }
     
-    return await response.json();
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      
+      if (response.status === 429) {
+        throw new Error('Rate limit reached. All API keys exhausted for today.');
+      }
+      
+      throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Found recipe: ${data.title}`);
+    return data;
   } catch (error) {
-    console.error('Error fetching recipe details:', error);
+    console.error('❌ Error fetching recipe details:', error);
     throw error;
+  }
+};
+
+// Get API key statistics (useful for debugging)
+export const getKeyStats = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/stats`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('📊 Key Statistics:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ Error fetching key stats:', error);
+    throw error;
+  }
+};
+
+// Check daily usage
+export const getDailyUsage = async () => {
+  try {
+    const healthData = await testConnection();
+    return {
+      used: healthData.usage?.today || 0,
+      total: healthData.usage?.capacity || 630,
+      remaining: healthData.usage?.remaining || 630,
+      utilization: healthData.usage?.utilization || '0%'
+    };
+  } catch (error) {
+    console.error('❌ Error checking usage:', error);
+    return null;
   }
 };

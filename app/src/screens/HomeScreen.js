@@ -1,5 +1,4 @@
-import DancingChefLoader from '../components/DancingChefLoader';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,310 +11,681 @@ import {
   Alert,
   Image,
   RefreshControl,
+  Animated,
+  Dimensions, // ← MAKE SURE THIS IS HERE
+  StatusBar,
 } from 'react-native';
 import { COLORS } from '../constants/config';
-import { searchRecipesByIngredients, testConnection } from '../services/api';
+import { searchRecipesByIngredients, testConnection, getDailyUsage } from '../services/api';
 import RecipeCard from '../components/RecipeCard';
+import DancingChefLoader from '../components/DancingChefLoader';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const QUICK_INGREDIENTS = ['Chicken', 'Pasta', 'Tomato', 'Cheese', 'Rice', 'Beef', 'Fish', 'Eggs'];
+const { width } = Dimensions.get('window');
 
-// Trending Recipes Data (simulated popular recipes)
-const TRENDING_RECIPES = [
+// ============== MASSIVE RECIPE DATASET ==============
+const TRENDING_NOW = [
+
   {
+    id: 2,
+    title: 'Honey Glazed Salmon',
+    image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400',
+    ingredients: 'salmon,honey,soy sauce,garlic,ginger',
+    time: '20 min',
+    rating: 4.8,
+    likes: '8.7k',
+    chef: 'James Rodriguez',
+    difficulty: 'Medium',
+  },
+  {
+    id: 3,
+    title: 'Ultimate Burger',
+    image: 'https://images.unsplash.com/photo-1550317138-10000687a72b?w=400',
+    ingredients: 'beef,buns,lettuce,tomato,cheese,onion',
+    time: '35 min',
+    rating: 4.9,
+    likes: '15.2k',
+    chef: 'Mike Johnson',
+    difficulty: 'Medium',
+  },
+  {
+    id: 4,
+    title: 'Sushi Roll Platter',
+    image: 'https://images.unsplash.com/photo-1553621042-f6e147245754?w=400',
+    ingredients: 'rice,fish,seaweed,avocado,cucumber',
+    time: '45 min',
+    rating: 4.9,
+    likes: '10.8k',
+    chef: 'Yuki Tanaka',
+    difficulty: 'Hard',
+  },
+  {
+    id: 5,
+    title: 'Chicken Tikka Masala',
+    image: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400',
+    ingredients: 'chicken,tomato,cream,spices,rice',
+    time: '50 min',
+    rating: 5.0,
+    likes: '18.5k',
+    chef: 'Raj Patel',
+    difficulty: 'Medium',
+  },
+    {
     id: 1,
     title: 'Creamy Garlic Pasta',
     image: 'https://images.unsplash.com/photo-1645112411342-4665ad1698a0?w=400',
-    ingredients: 'pasta,garlic,cream,cheese',
+    ingredients: 'pasta,garlic,cream,cheese,butter',
     time: '25 min',
-    trending: true,
-  },
-  {
-    id: 2,
-    title: 'Spicy Chicken Wings',
-    image: 'https://images.unsplash.com/photo-1608039829572-78524f79c4c7?w=400',
-    ingredients: 'chicken,wings,spices,hot sauce',
-    time: '40 min',
-    trending: true,
-  },
-  {
-    id: 3,
-    title: 'Mediterranean Salad',
-    image: 'https://images.unsplash.com/photo-1546793665-c74683f339c1?w=400',
-    ingredients: 'lettuce,tomato,cucumber,feta,olives',
-    time: '15 min',
-    trending: true,
-  },
-  {
-    id: 4,
-    title: 'Beef Stir Fry',
-    image: 'https://images.unsplash.com/photo-1547496502-affa22d38842?w=400',
-    ingredients: 'beef,vegetables,soy sauce,ginger',
-    time: '30 min',
-    trending: true,
+    rating: 4.9,
+    likes: '12.3k',
+    chef: 'Maria Chen',
+    difficulty: 'Easy',
   },
 ];
 
-// Quick & Easy Recipes Data (under 20 mins)
-const QUICK_RECIPES = [
+const QUICK_BITES = [
   {
-    id: 5,
-    title: '5-Minute Avocado Toast',
-    image: 'https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?w=400',
-    ingredients: 'bread,avocado,eggs,salt',
+    id: 101,
+    title: '2-Min Microwave Mug Brownie',
+    image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=400',
+    ingredients: 'flour,sugar,cocoa,eggs,milk',
+    time: '2 min',
+    calories: 320,
+    badge: '🍫 Dessert',
+  },
+  {
+    id: 102,
+    title: '5-Min Avocado Toast',
+    image: 'https://images.unsplash.com/photo-1588137378633-dea1336ce1e0?w=400',
+    ingredients: 'bread,avocado,eggs,salt,pepper',
     time: '5 min',
+    calories: 280,
+    badge: '🥑 Healthy',
   },
   {
-    id: 6,
-    title: 'Quick Tomato Pasta',
-    image: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400',
-    ingredients: 'pasta,tomato,garlic,basil',
-    time: '15 min',
-  },
-  {
-    id: 7,
-    title: 'Microwave Mug Omelette',
-    image: 'https://images.unsplash.com/photo-1510693206972-df098062cb71?w=400',
-    ingredients: 'eggs,milk,cheese,pepper',
-    time: '3 min',
-  },
-  {
-    id: 8,
-    title: 'Greek Yogurt Bowl',
+    id: 103,
+    title: '3-Min Greek Yogurt Bowl',
     image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400',
     ingredients: 'yogurt,honey,berries,granola',
-    time: '2 min',
+    time: '3 min',
+    calories: 220,
+    badge: '🫐 Breakfast',
   },
   {
-    id: 9,
-    title: 'Caprese Sandwich',
-    image: 'https://images.unsplash.com/photo-1481070555726-e2fe8357725c?w=400',
-    ingredients: 'bread,tomato,mozzarella,basil',
-    time: '10 min',
+    id: 104,
+    title: '1-Min Peanut Butter Banana',
+    image: 'https://images.unsplash.com/photo-1522093007474-d86e9bf7ba6f?w=400',
+    ingredients: 'banana,peanut butter,honey',
+    time: '1 min',
+    calories: 190,
+    badge: '⚡ Energy',
   },
   {
-    id: 10,
-    title: 'Quick Fried Rice',
-    image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400',
-    ingredients: 'rice,eggs,vegetables,soy sauce',
-    time: '12 min',
+    id: 105,
+    title: '4-Min Caprese Salad',
+    image: 'https://images.unsplash.com/photo-1608898830267-3eb5fbe3b5c7?w=400',
+    ingredients: 'tomato,mozzarella,basil,olive oil',
+    time: '4 min',
+    calories: 240,
+    badge: '🇮🇹 Italian',
   },
 ];
 
-// Cuisine Explorer Data
-const CUISINES = [
+const WORLD_CUISINES = [
+  { id: 'it', name: 'Italian', flag: '🇮🇹', ingredients: 'pasta,tomato,cheese,olive oil,basil', color: '#e87a3d' },
+  { id: 'jp', name: 'Japanese', flag: '🇯🇵', ingredients: 'rice,fish,soy sauce,seaweed,tofu', color: '#e83d8c' },
+  { id: 'mx', name: 'Mexican', flag: '🇲🇽', ingredients: 'beans,rice,avocado,tortilla,chili', color: '#e83d3d' },
+  { id: 'in', name: 'Indian', flag: '🇮🇳', ingredients: 'rice,spices,chicken,lentils,curry', color: '#e8a63d' },
+  { id: 'th', name: 'Thai', flag: '🇹🇭', ingredients: 'coconut milk,rice,noodles,chili,ginger', color: '#3de87a' },
+  { id: 'fr', name: 'French', flag: '🇫🇷', ingredients: 'butter,cream,herbs,onion,wine', color: '#3d9ee8' },
+  { id: 'gr', name: 'Greek', flag: '🇬🇷', ingredients: 'olive oil,feta,olives,lemon,oregano', color: '#4ade80' },
+  { id: 'lb', name: 'Lebanese', flag: '🇱🇧', ingredients: 'chickpeas,garlic,lemon,tahini,lamb', color: '#e88a3d' },
+  { id: 'vn', name: 'Vietnamese', flag: '🇻🇳', ingredients: 'rice noodles,fish sauce,herbs,lime', color: '#3de8b0' },
+  { id: 'kr', name: 'Korean', flag: '🇰🇷', ingredients: 'rice,gochujang,tofu,vegetables,beef', color: '#e83d5e' },
+];
+
+const SEASONAL_SPOTLIGHT = [
   {
-    id: 'italian',
-    name: 'Italian',
-    icon: 'https://cdn-icons-png.flaticon.com/512/1404/1404945.png',
-    ingredients: 'pasta,tomato,cheese,olive oil,basil,garlic',
-    color: '#e87a3d',
+    id: 201,
+    title: 'Pumpkin Spice Latte Cake',
+    image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400',
+    ingredients: 'pumpkin,flour,eggs,spices,cream',
+    season: '🍂 Fall',
+    month: 'October',
   },
   {
-    id: 'asian',
-    name: 'Asian',
-    icon: 'https://cdn-icons-png.flaticon.com/512/3174/3174883.png',
-    ingredients: 'rice,noodles,soy sauce,ginger,garlic',
-    color: '#3de87a',
+    id: 202,
+    title: 'Summer Berry Tart',
+    image: 'https://images.unsplash.com/photo-1464305795435-96a6b9b7a7b4?w=400',
+    ingredients: 'berries,flour,butter,sugar,eggs',
+    season: '☀️ Summer',
+    month: 'July',
   },
   {
-    id: 'mexican',
-    name: 'Mexican',
-    icon: 'https://cdn-icons-png.flaticon.com/512/2942/2942690.png',
-    ingredients: 'beans,rice,avocado,tortilla,chili',
-    color: '#e83d3d',
+    id: 203,
+    title: 'Spring Asparagus Risotto',
+    image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?w=400',
+    ingredients: 'rice,asparagus,parmesan,broth,lemon',
+    season: '🌱 Spring',
+    month: 'April',
   },
   {
-    id: 'african',
-    name: 'African',
-    icon: 'https://cdn-icons-png.flaticon.com/512/2579/2579021.png',
-    ingredients: 'rice,beans,plantains,peanuts,chicken',
-    color: '#e8a63d',
+    id: 204,
+    title: 'Winter Beef Wellington',
+    image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400',
+    ingredients: 'beef,mushrooms,pastry,eggs,thyme',
+    season: '❄️ Winter',
+    month: 'December',
   },
   {
-    id: 'indian',
-    name: 'Indian',
-    icon: 'https://cdn-icons-png.flaticon.com/512/2942/2942796.png',
-    ingredients: 'rice,curry,spices,lentils,chicken',
-    color: '#e83d9e',
-  },
-  {
-    id: 'mediterranean',
-    name: 'Mediterranean',
-    icon: 'https://cdn-icons-png.flaticon.com/512/2942/2942708.png',
-    ingredients: 'olive oil,fish,vegetables,hummus',
-    color: '#4ade80',
+    id: 205,
+    title: 'Spring Lamb Chops',
+    image: 'https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=400',
+    ingredients: 'lamb,rosemary,garlic,olive oil,potatoes',
+    season: '🌱 Spring',
+    month: 'May',
   },
 ];
 
-// Seasonal Picks Data (changes by month)
-const getSeasonalRecipes = () => {
-  const month = new Date().getMonth();
-  
-  // Winter (Dec-Feb)
-  if (month === 11 || month === 0 || month === 1) {
-    return [
-      {
-        id: 11,
-        title: 'Hearty Beef Stew',
-        image: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=400',
-        ingredients: 'beef,potatoes,carrots,onions,broth',
-        season: 'Winter',
-      },
-      {
-        id: 12,
-        title: 'Roasted Root Vegetables',
-        image: 'https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=400',
-        ingredients: 'carrots,potatoes,parsnips,rosemary',
-        season: 'Winter',
-      },
-    ];
-  }
-  // Spring (Mar-May)
-  else if (month >= 2 && month <= 4) {
-    return [
-      {
-        id: 13,
-        title: 'Spring Pea Risotto',
-        image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?w=400',
-        ingredients: 'rice,peas,parmesan,mint',
-        season: 'Spring',
-      },
-      {
-        id: 14,
-        title: 'Asparagus Lemon Pasta',
-        image: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=400',
-        ingredients: 'pasta,asparagus,lemon,garlic',
-        season: 'Spring',
-      },
-    ];
-  }
-  // Summer (Jun-Aug)
-  else if (month >= 5 && month <= 7) {
-    return [
-      {
-        id: 15,
-        title: 'Grilled Corn Salad',
-        image: 'https://images.unsplash.com/photo-1547483238-2c2bf5a4cf24?w=400',
-        ingredients: 'corn,peppers,lime,cilantro',
-        season: 'Summer',
-      },
-      {
-        id: 16,
-        title: 'Watermelon Feta Salad',
-        image: 'https://images.unsplash.com/photo-1580014317999-e9f1936787a5?w=400',
-        ingredients: 'watermelon,feta,mint,lime',
-        season: 'Summer',
-      },
-    ];
-  }
-  // Fall (Sep-Nov)
-  else {
-    return [
-      {
-        id: 17,
-        title: 'Butternut Squash Soup',
-        image: 'https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?w=400',
-        ingredients: 'squash,onions,ginger,coconut milk',
-        season: 'Fall',
-      },
-      {
-        id: 18,
-        title: 'Apple Cinnamon Oatmeal',
-        image: 'https://images.unsplash.com/photo-1517673132405-a56a62b18caf?w=400',
-        ingredients: 'oats,apples,cinnamon,honey',
-        season: 'Fall',
-      },
-    ];
-  }
-};
+const CHEF_SIGNATURE = [
+  {
+    id: 301,
+    title: 'Beef Wellington',
+    chef: 'Gordon Ramsay',
+    image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400',
+    ingredients: 'beef,mushrooms,puff pastry,eggs,prosciutto',
+    difficulty: 'Expert',
+    time: '2.5 hours',
+    rating: 5.0,
+  },
+  {
+    id: 302,
+    title: 'Tiramisu',
+    chef: 'Massimo Bottura',
+    image: 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=400',
+    ingredients: 'mascarpone,eggs,sugar,coffee,ladyfingers',
+    difficulty: 'Medium',
+    time: '1 hour',
+    rating: 4.9,
+  },
+  {
+    id: 303,
+    title: 'Sushi Omakase',
+    chef: 'Jiro Ono',
+    image: 'https://images.unsplash.com/photo-1553621042-f6e147245754?w=400',
+    ingredients: 'rice,fish,seaweed,wasabi,soy sauce',
+    difficulty: 'Expert',
+    time: '3 hours',
+    rating: 5.0,
+  },
+];
 
-// Chef's Special Data
-const CHEF_SPECIAL = {
-  id: 19,
-  title: 'Signature Beef Wellington',
-  chef: 'Chef Maria',
-  image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400',
-  ingredients: 'beef,mushrooms,puff pastry,eggs',
-  description: 'A showstopping centerpiece for special occasions',
-  time: '120 min',
-  difficulty: 'Advanced',
-};
+const HEALTHY_HEROES = [
+  {
+    id: 401,
+    title: 'Quinoa Buddha Bowl',
+    image: 'https://images.unsplash.com/photo-1546793665-c74683f339c1?w=400',
+    ingredients: 'quinoa,chickpeas,avocado,kale,lemon',
+    calories: 420,
+    protein: '18g',
+    time: '20 min',
+  },
+  {
+    id: 402,
+    title: 'Grilled Chicken Salad',
+    image: 'https://images.unsplash.com/photo-1546793665-c74683f339c1?w=400',
+    ingredients: 'chicken,lettuce,tomato,cucumber,olives',
+    calories: 380,
+    protein: '32g',
+    time: '25 min',
+  },
+  {
+    id: 403,
+    title: 'Zucchini Noodles',
+    image: 'https://images.unsplash.com/photo-1515516969-d4008cc6241a?w=400',
+    ingredients: 'zucchini,tomato,garlic,basil,olive oil',
+    calories: 210,
+    protein: '8g',
+    time: '15 min',
+  },
+];
 
-// Cooking Tips Data
+const DESSERT_PARADISE = [
+  {
+    id: 501,
+    title: 'Molten Chocolate Cake',
+    image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=400',
+    ingredients: 'chocolate,flour,eggs,butter,sugar',
+    time: '30 min',
+    difficulty: 'Medium',
+  },
+  {
+    id: 502,
+    title: 'French Macarons',
+    image: 'https://images.unsplash.com/photo-1569864358642-9d1684040f43?w=400',
+    ingredients: 'almond flour,eggs whites,sugar,food coloring',
+    time: '2 hours',
+    difficulty: 'Hard',
+  },
+  {
+    id: 503,
+    title: 'New York Cheesecake',
+    image: 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=400',
+    ingredients: 'cream cheese,graham crackers,eggs,sugar',
+    time: '1.5 hours',
+    difficulty: 'Medium',
+  },
+];
+
+const COMFORT_FOOD = [
+  {
+    id: 601,
+    title: 'Mac & Cheese',
+    image: 'https://images.unsplash.com/photo-1543339494-b4cd4b7e1b2d?w=400',
+    ingredients: 'pasta,cheddar,milk,butter,flour',
+    time: '30 min',
+    mood: '😌 Cozy',
+  },
+  {
+    id: 602,
+    title: 'Chicken Pot Pie',
+    image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400',
+    ingredients: 'chicken,carrots,peas,pie crust,cream',
+    time: '1 hour',
+    mood: '🏡 Homestyle',
+  },
+  {
+    id: 603,
+    title: 'Mashed Potatoes',
+    image: 'https://images.unsplash.com/photo-1608830524289-0adcbe822b40?w=400',
+    ingredients: 'potatoes,butter,milk,garlic,chives',
+    time: '25 min',
+    mood: '❤️ Comfort',
+  },
+];
+
+const DATE_NIGHT = [
+  {
+    id: 701,
+    title: 'Lobster Thermidor',
+    image: 'https://images.unsplash.com/photo-1533682805518-48d1f5b8cd3a?w=400',
+    ingredients: 'lobster,cream,cheese,mustard,brandy',
+    time: '1.5 hours',
+    occasion: '💕 Romantic',
+  },
+  {
+    id: 702,
+    title: 'Beef Tenderloin',
+    image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=400',
+    ingredients: 'beef,rosemary,garlic,butter,thyme',
+    time: '45 min',
+    occasion: '✨ Special',
+  },
+];
+
+const BREAKFAST_CLUB = [
+  {
+    id: 801,
+    title: 'Fluffy Pancakes',
+    image: 'https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=400',
+    ingredients: 'flour,eggs,milk,butter,maple syrup',
+    time: '20 min',
+    type: '🥞 Weekend',
+  },
+  {
+    id: 802,
+    title: 'Eggs Benedict',
+    image: 'https://images.unsplash.com/photo-1608039829572-78524f79c4c7?w=400',
+    ingredients: 'eggs,english muffin,ham,hollandaise',
+    time: '25 min',
+    type: '✨ Fancy',
+  },
+];
+
+const VEGAN_VIBES = [
+  {
+    id: 901,
+    title: 'Vegan Buddha Bowl',
+    image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
+    ingredients: 'quinoa,tofu,avocado,spinach,tahini',
+    time: '20 min',
+    diet: '🌱 Plant-based',
+  },
+  {
+    id: 902,
+    title: 'Cauliflower Wings',
+    image: 'https://images.unsplash.com/photo-1608039829572-78524f79c4c7?w=400',
+    ingredients: 'cauliflower,flour,hot sauce,garlic powder',
+    time: '35 min',
+    diet: '🌱 Vegan',
+  },
+];
+
+const DRINKS_COCKTAILS = [
+  {
+    id: 1001,
+    title: 'Mojito',
+    image: 'https://images.unsplash.com/photo-1551538827-9c037cb4f32a?w=400',
+    ingredients: 'rum,mint,lime,sugar,soda water',
+    time: '5 min',
+    type: '🍹 Refreshing',
+  },
+  {
+    id: 1002,
+    title: 'Espresso Martini',
+    image: 'https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=400',
+    ingredients: 'vodka,espresso,coffee liqueur,syrup',
+    time: '5 min',
+    type: '☕ After dinner',
+  },
+];
+
+const BUDGET_MEALS = [
+  {
+    id: 1101,
+    title: '$10 Pasta Night',
+    image: 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?w=400',
+    ingredients: 'pasta,tomato,garlic,onion,cheese',
+    time: '20 min',
+    cost: '💰 Under $10',
+  },
+  {
+    id: 1102,
+    title: 'Rice and Beans',
+    image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
+    ingredients: 'rice,beans,onion,spices,tomato',
+    time: '25 min',
+    cost: '💰💰 $5 meal',
+  },
+];
+
+const MEAL_PREP = [
+  {
+    id: 1201,
+    title: 'Weekly Chicken Prep',
+    image: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=400',
+    ingredients: 'chicken,broccoli,rice,olive oil,seasonings',
+    time: '1.5 hours',
+    servings: '4 meals',
+  },
+];
+
+const KIDS_FAVORITES = [
+  {
+    id: 1301,
+    title: 'Funny Face Pancakes',
+    image: 'https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=400',
+    ingredients: 'pancake mix,berries,banana,chocolate chips',
+    time: '20 min',
+    kids: '👶 Kid-approved',
+  },
+];
+
 const COOKING_TIPS = [
-  {
-    id: 1,
-    tip: 'To check if pan is hot enough, flick a drop of water - it should sizzle and evaporate immediately.',
-    icon: 'https://cdn-icons-png.flaticon.com/512/3174/3174883.png',
-  },
-  {
-    id: 2,
-    tip: 'Always let meat rest for 5-10 minutes after cooking to keep juices inside.',
-    icon: 'https://cdn-icons-png.flaticon.com/512/1404/1404945.png',
-  },
-  {
-    id: 3,
-    tip: 'Use room temperature eggs for baking - they incorporate better into batters.',
-    icon: 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png',
-  },
-  {
-    id: 4,
-    tip: 'Add salt to pasta water - it should taste like the sea for best flavor.',
-    icon: 'https://cdn-icons-png.flaticon.com/512/1471/1471262.png',
-  },
+  { id: 1, tip: 'Rest meat 10 mins after cooking', emoji: '🥩' },
+  { id: 2, tip: 'Room temp eggs for baking', emoji: '🥚' },
+  { id: 3, tip: 'Salt pasta water like the sea', emoji: '🍝' },
+  { id: 4, tip: 'Sharp knife = safer knife', emoji: '🔪' },
+  { id: 5, tip: 'Mise en place = organized', emoji: '🧑‍🍳' },
+  { id: 6, tip: 'Taste as you cook', emoji: '👅' },
+  { id: 7, tip: 'Let dough rest', emoji: '🍞' },
+  { id: 8, tip: 'Hot pan = better sear', emoji: '🔥' },
 ];
 
+// ============== COMPONENTS ==============
+
+const GradientCard = ({ children, colors = [COLORS.primary + '80', COLORS.card], style }) => (
+  <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.gradientCard, style]}>
+    {children}
+  </LinearGradient>
+);
+
+const SectionHeader = ({ title, subtitle, seeAll = true, onSeeAll }) => (
+  <View style={styles.sectionHeader}>
+    <View>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {subtitle && <Text style={styles.sectionSubtitle}>{subtitle}</Text>}
+    </View>
+    {seeAll && (
+      <TouchableOpacity onPress={onSeeAll}>
+        <Text style={styles.seeAllText}>See All →</Text>
+      </TouchableOpacity>
+    )}
+  </View>
+);
+
+const TrendingCard = ({ item, onPress }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPressIn={() => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true }).start()}
+      onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start()}
+      onPress={onPress}
+    >
+      <Animated.View style={[styles.trendingCard, { transform: [{ scale }] }]}>
+        <Image source={{ uri: item.image }} style={styles.trendingImage} />
+        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={styles.trendingGradient}>
+          <View style={styles.trendingBadge}>
+            <Text style={styles.trendingBadgeText}>⭐ {item.rating}</Text>
+          </View>
+          <Text style={styles.trendingTitle}>{item.title}</Text>
+          <View style={styles.trendingMeta}>
+            <Text style={styles.trendingChef}>👨‍🍳 {item.chef}</Text>
+            <Text style={styles.trendingTime}>⏱ {item.time}</Text>
+          </View>
+          <Text style={styles.trendingLikes}>❤️ {item.likes}</Text>
+        </LinearGradient>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
+
+const QuickBiteCard = ({ item, onPress }) => (
+  <TouchableOpacity style={styles.quickBiteCard} onPress={onPress}>
+    <Image source={{ uri: item.image }} style={styles.quickBiteImage} />
+    <View style={styles.quickBiteBadge}>
+      <Text style={styles.quickBiteBadgeText}>{item.badge}</Text>
+    </View>
+    <View style={styles.quickBiteContent}>
+      <Text style={styles.quickBiteTitle}>{item.title}</Text>
+      <View style={styles.quickBiteMeta}>
+        <Text style={styles.quickBiteTime}>⏱ {item.time}</Text>
+        <Text style={styles.quickBiteCalories}>🔥 {item.calories} cal</Text>
+      </View>
+    </View>
+  </TouchableOpacity>
+);
+
+const CuisineCircle = ({ item, onPress }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      onPressIn={() => Animated.spring(scale, { toValue: 0.9, useNativeDriver: true }).start()}
+      onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start()}
+    >
+      <Animated.View style={[styles.cuisineCircle, { transform: [{ scale }], backgroundColor: item.color + '20' }]}>
+        <Text style={styles.cuisineFlag}>{item.flag}</Text>
+        <Text style={[styles.cuisineName, { color: item.color }]}>{item.name}</Text>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
+
+const SeasonalCard = ({ item, onPress }) => (
+  <TouchableOpacity style={styles.seasonalCard} onPress={onPress}>
+    <Image source={{ uri: item.image }} style={styles.seasonalImage} />
+    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.seasonalOverlay}>
+      <View style={styles.seasonalBadge}>
+        <Text style={styles.seasonalBadgeText}>{item.season}</Text>
+      </View>
+      <Text style={styles.seasonalTitle}>{item.title}</Text>
+      <Text style={styles.seasonalMonth}>{item.month}</Text>
+    </LinearGradient>
+  </TouchableOpacity>
+);
+
+const ChefCard = ({ item, onPress }) => (
+  <TouchableOpacity style={styles.chefCard} onPress={onPress}>
+    <Image source={{ uri: item.image }} style={styles.chefImage} />
+    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={styles.chefGradient}>
+      <Text style={styles.chefTitle}>{item.title}</Text>
+      <Text style={styles.chefName}>by {item.chef}</Text>
+      <View style={styles.chefMeta}>
+        <Text style={styles.chefDifficulty}>{item.difficulty}</Text>
+        <Text style={styles.chefTime}>⏱ {item.time}</Text>
+        <Text style={styles.chefRating}>⭐ {item.rating}</Text>
+      </View>
+    </LinearGradient>
+  </TouchableOpacity>
+);
+
+const HealthCard = ({ item, onPress }) => (
+  <TouchableOpacity style={styles.healthCard} onPress={onPress}>
+    <Image source={{ uri: item.image }} style={styles.healthImage} />
+    <View style={styles.healthContent}>
+      <Text style={styles.healthTitle}>{item.title}</Text>
+      <View style={styles.healthStats}>
+        <Text style={styles.healthCalories}>🔥 {item.calories} cal</Text>
+        <Text style={styles.healthProtein}>💪 {item.protein}</Text>
+        <Text style={styles.healthTime}>⏱ {item.time}</Text>
+      </View>
+    </View>
+  </TouchableOpacity>
+);
+
+const DessertCard = ({ item, onPress }) => (
+  <TouchableOpacity style={styles.dessertCard} onPress={onPress}>
+    <Image source={{ uri: item.image }} style={styles.dessertImage} />
+    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={styles.dessertOverlay}>
+      <Text style={styles.dessertTitle}>{item.title}</Text>
+      <View style={styles.dessertMeta}>
+        <Text style={styles.dessertTime}>⏱ {item.time}</Text>
+        <Text style={styles.dessertDifficulty}>{item.difficulty}</Text>
+      </View>
+    </LinearGradient>
+  </TouchableOpacity>
+);
+
+const ComfortCard = ({ item, onPress }) => (
+  <TouchableOpacity style={styles.comfortCard} onPress={onPress}>
+    <Image source={{ uri: item.image }} style={styles.comfortImage} />
+    <View style={styles.comfortOverlay}>
+      <Text style={styles.comfortMood}>{item.mood}</Text>
+      <Text style={styles.comfortTitle}>{item.title}</Text>
+      <Text style={styles.comfortTime}>⏱ {item.time}</Text>
+    </View>
+  </TouchableOpacity>
+);
+
+const DateNightCard = ({ item, onPress }) => (
+  <TouchableOpacity style={styles.dateCard} onPress={onPress}>
+    <Image source={{ uri: item.image }} style={styles.dateImage} />
+    <LinearGradient colors={['transparent', 'rgba(232,122,61,0.9)']} style={styles.dateOverlay}>
+      <Text style={styles.dateOccasion}>{item.occasion}</Text>
+      <Text style={styles.dateTitle}>{item.title}</Text>
+      <Text style={styles.dateTime}>⏱ {item.time}</Text>
+    </LinearGradient>
+  </TouchableOpacity>
+);
+
+const BreakfastCard = ({ item, onPress }) => (
+  <TouchableOpacity style={styles.breakfastCard} onPress={onPress}>
+    <Image source={{ uri: item.image }} style={styles.breakfastImage} />
+    <View style={styles.breakfastContent}>
+      <Text style={styles.breakfastType}>{item.type}</Text>
+      <Text style={styles.breakfastTitle}>{item.title}</Text>
+      <Text style={styles.breakfastTime}>⏱ {item.time}</Text>
+    </View>
+  </TouchableOpacity>
+);
+
+const VeganCard = ({ item, onPress }) => (
+  <TouchableOpacity style={styles.veganCard} onPress={onPress}>
+    <Image source={{ uri: item.image }} style={styles.veganImage} />
+    <View style={styles.veganBadge}>
+      <Text style={styles.veganBadgeText}>{item.diet}</Text>
+    </View>
+    <Text style={styles.veganTitle}>{item.title}</Text>
+    <Text style={styles.veganTime}>⏱ {item.time}</Text>
+  </TouchableOpacity>
+);
+
+const DrinkCard = ({ item, onPress }) => (
+  <TouchableOpacity style={styles.drinkCard} onPress={onPress}>
+    <Image source={{ uri: item.image }} style={styles.drinkImage} />
+    <View style={styles.drinkContent}>
+      <Text style={styles.drinkType}>{item.type}</Text>
+      <Text style={styles.drinkTitle}>{item.title}</Text>
+      <Text style={styles.drinkTime}>⏱ {item.time}</Text>
+    </View>
+  </TouchableOpacity>
+);
+
+const BudgetCard = ({ item, onPress }) => (
+  <TouchableOpacity style={styles.budgetCard} onPress={onPress}>
+    <Image source={{ uri: item.image }} style={styles.budgetImage} />
+    <View style={styles.budgetContent}>
+      <Text style={styles.budgetCost}>{item.cost}</Text>
+      <Text style={styles.budgetTitle}>{item.title}</Text>
+      <Text style={styles.budgetTime}>⏱ {item.time}</Text>
+    </View>
+  </TouchableOpacity>
+);
+
+const KidsCard = ({ item, onPress }) => (
+  <TouchableOpacity style={styles.kidsCard} onPress={onPress}>
+    <Image source={{ uri: item.image }} style={styles.kidsImage} />
+    <View style={styles.kidsOverlay}>
+      <Text style={styles.kidsBadge}>{item.kids}</Text>
+      <Text style={styles.kidsTitle}>{item.title}</Text>
+      <Text style={styles.kidsTime}>⏱ {item.time}</Text>
+    </View>
+  </TouchableOpacity>
+);
+
+const TipCard = ({ item }) => (
+  <View style={styles.tipCard}>
+    <Text style={styles.tipEmoji}>{item.emoji}</Text>
+    <Text style={styles.tipText}>{item.tip}</Text>
+  </View>
+);
+
+// ============== MAIN SCREEN ==============
 const HomeScreen = ({ navigation }) => {
   const [ingredients, setIngredients] = useState('');
   const [loading, setLoading] = useState(false);
   const [recipes, setRecipes] = useState([]);
   const [showResults, setShowResults] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [seasonalRecipes] = useState(getSeasonalRecipes());
-  const [dailyTip] = useState(COOKING_TIPS[Math.floor(Math.random() * COOKING_TIPS.length)]);
 
   useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        await testConnection();
-        console.log('✅ Connected to backend');
-      } catch (error) {
-        Alert.alert(
-          'Connection Error',
-          'Cannot connect to the backend server. Please check your internet connection.'
-        );
-      }
-    };
     checkConnection();
   }, []);
 
-  const handleSearch = async (searchIngredients) => {
-    const searchQuery = searchIngredients || ingredients;
-    
-    if (!searchQuery.trim()) {
-      Alert.alert('Error', 'Please enter some ingredients');
-      return;
+  const checkConnection = async () => {
+    try {
+      await testConnection();
+    } catch (error) {
+      Alert.alert('Connection Error', 'Cannot connect to backend');
     }
+  };
 
+  const handleSearch = async (searchIngredients) => {
     setLoading(true);
     setShowResults(true);
     
     try {
-      const results = await searchRecipesByIngredients(searchQuery);
+      const results = await searchRecipesByIngredients(searchIngredients);
       setRecipes(results);
     } catch (error) {
-      Alert.alert('Error', `Failed to search recipes: ${error.message}`);
+      Alert.alert('Error', error.message);
       setShowResults(false);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const addIngredient = (ingredient) => {
-    if (ingredients) {
-      setIngredients(ingredients + ', ' + ingredient);
-    } else {
-      setIngredients(ingredient);
     }
   };
 
@@ -329,309 +699,278 @@ const HomeScreen = ({ navigation }) => {
     navigation.navigate('RecipeDetail', { recipeId });
   };
 
-  const handleCuisinePress = (cuisine) => {
-    setIngredients(cuisine.ingredients);
-    handleSearch(cuisine.ingredients);
-  };
-
-  const handleQuickRecipePress = (quickRecipe) => {
-    setIngredients(quickRecipe.ingredients);
-    handleSearch(quickRecipe.ingredients);
-  };
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    
-    if (showResults && ingredients) {
-      try {
-        const results = await searchRecipesByIngredients(ingredients);
-        setRecipes(results);
-      } catch (error) {
-        Alert.alert('Error', 'Failed to refresh recipes');
-      }
-    } else {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-    
     setRefreshing(false);
-  }, [showResults, ingredients]);
+  }, []);
 
   if (loading) {
     return <DancingChefLoader message="Finding delicious recipes..." />;
   }
 
-  // Trending Recipe Card Component
-  const TrendingCard = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.trendingCard}
-      onPress={() => handleQuickRecipePress(item)}
-    >
-      <Image source={{ uri: item.image }} style={styles.trendingImage} />
-      <View style={styles.trendingBadge}>
-        <Text style={styles.trendingBadgeText}>🔥 Trending</Text>
-      </View>
-      <View style={styles.trendingContent}>
-        <Text style={styles.trendingTitle} numberOfLines={1}>{item.title}</Text>
-        <View style={styles.trendingMeta}>
-          <Text style={styles.trendingTime}>⏱ {item.time}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
-  // Quick Recipe Card Component
-  const QuickRecipeCard = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.quickCard}
-      onPress={() => handleQuickRecipePress(item)}
-    >
-      <Image source={{ uri: item.image }} style={styles.quickImage} />
-      <View style={styles.quickContent}>
-        <Text style={styles.quickTitle} numberOfLines={1}>{item.title}</Text>
-        <Text style={styles.quickTime}>⚡ {item.time}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-
-  // Cuisine Card Component
-  const CuisineCard = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.cuisineCard}
-      onPress={() => handleCuisinePress(item)}
-    >
-      <View style={[styles.cuisineIconContainer, { backgroundColor: item.color + '20' }]}>
-        <Image source={{ uri: item.icon }} style={[styles.cuisineIcon, { tintColor: item.color }]} />
-      </View>
-      <Text style={styles.cuisineName}>{item.name}</Text>
-    </TouchableOpacity>
-  );
-
-  // Seasonal Card Component
-  const SeasonalCard = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.seasonalCard}
-      onPress={() => handleQuickRecipePress(item)}
-    >
-      <Image source={{ uri: item.image }} style={styles.seasonalImage} />
-      <View style={styles.seasonalOverlay}>
-        <Text style={styles.seasonalBadge}>🌱 {item.season}</Text>
-      </View>
-      <View style={styles.seasonalContent}>
-        <Text style={styles.seasonalTitle} numberOfLines={2}>{item.title}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+
       {!showResults ? (
-        <ScrollView 
+        <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[COLORS.primary]}
-              tintColor={COLORS.primary}
-              title="Pull to refresh"
-              titleColor={COLORS.textSecondary}
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
           }
         >
-          {/* Hero Section */}
-          <View style={styles.heroSection}>
-            <Text style={styles.heroTitle}>
-              Discover Amazing <Text style={styles.heroHighlight}>Recipes</Text>
-            </Text>
-            <Text style={styles.heroSubtitle}>
-              Find perfect recipes based on ingredients you have
-            </Text>
-
-            <View style={styles.searchContainer}>
+          {/* Hero Search Section */}
+          <GradientCard style={styles.heroCard}>
+            <Text style={styles.heroTitle}>What are you craving?</Text>
+            <Text style={styles.heroSubtitle}>Enter ingredients to find perfect recipes</Text>
+            
+            <View style={styles.heroSearchContainer}>
               <TextInput
-                style={styles.searchInput}
+                style={styles.heroInput}
                 placeholder="e.g., chicken, rice, tomatoes..."
                 placeholderTextColor={COLORS.textSecondary}
                 value={ingredients}
                 onChangeText={setIngredients}
-                onSubmitEditing={() => handleSearch()}
+                onSubmitEditing={() => handleSearch(ingredients)}
                 returnKeyType="search"
               />
-              <TouchableOpacity style={styles.searchButton} onPress={() => handleSearch()}>
-                <Image 
-                  source={{ uri: 'https://cdn-icons-png.flaticon.com/512/149/149852.png' }}
-                  style={styles.buttonIcon}
-                />
-                <Text style={styles.searchButtonText}>FIND</Text>
+              <TouchableOpacity style={styles.heroButton} onPress={() => handleSearch(ingredients)}>
+                <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={styles.heroButtonGradient}>
+                  <Text style={styles.heroButtonText}>Find</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
+          </GradientCard>
 
-            <View style={styles.quickContainer}>
-              <Text style={styles.quickTitle}>Quick ingredients:</Text>
-              <View style={styles.quickTagsGrid}>
-                {QUICK_INGREDIENTS.map((item) => (
-                  <TouchableOpacity 
-                    key={item} 
-                    style={styles.quickTag}
-                    onPress={() => addIngredient(item.toLowerCase())}
-                  >
-                    <Text style={styles.quickTagText}>{item}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </View>
-
-          {/* Trending Now Section */}
+          {/* SECTION 1: Trending Now */}
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>🔥 Trending Now</Text>
-              <TouchableOpacity>
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            </View>
+            <SectionHeader title="🔥 Trending Now" subtitle="Most popular this week" />
             <FlatList
               horizontal
-              data={TRENDING_RECIPES}
-              renderItem={({ item }) => <TrendingCard item={item} />}
+              data={TRENDING_NOW}
+              renderItem={({ item }) => (
+                <TrendingCard item={item} onPress={() => handleSearch(item.ingredients)} />
+              )}
               keyExtractor={(item) => item.id.toString()}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalList}
             />
           </View>
 
-          {/* Cuisine Explorer Section */}
+          {/* SECTION 2: Quick Bites (Under 5 Minutes) */}
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>🌍 Explore Cuisines</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Categories')}>
-                <Text style={styles.seeAllText}>All Cuisines</Text>
-              </TouchableOpacity>
-            </View>
+            <SectionHeader title="⚡ Quick Bites" subtitle="Ready in under 5 minutes" />
             <FlatList
               horizontal
-              data={CUISINES}
-              renderItem={({ item }) => <CuisineCard item={item} />}
-              keyExtractor={(item) => item.id}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalList}
-            />
-          </View>
-
-          {/* Quick & Easy Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>⚡ Quick & Easy</Text>
-              <TouchableOpacity>
-                <Text style={styles.seeAllText}>More Quick Meals</Text>
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              horizontal
-              data={QUICK_RECIPES}
-              renderItem={({ item }) => <QuickRecipeCard item={item} />}
+              data={QUICK_BITES}
+              renderItem={({ item }) => (
+                <QuickBiteCard item={item} onPress={() => handleSearch(item.ingredients)} />
+              )}
               keyExtractor={(item) => item.id.toString()}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalList}
             />
           </View>
 
-          {/* Seasonal Picks Section */}
+          {/* SECTION 3: World Cuisines */}
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>🌱 Seasonal Picks</Text>
-              <TouchableOpacity>
-                <Text style={styles.seeAllText}>View All</Text>
-              </TouchableOpacity>
+            <SectionHeader title="🌍 World Cuisines" subtitle="Explore global flavors" seeAll={false} />
+            <View style={styles.cuisineGrid}>
+              {WORLD_CUISINES.map((item) => (
+                <CuisineCircle key={item.id} item={item} onPress={() => handleSearch(item.ingredients)} />
+              ))}
             </View>
+          </View>
+
+          {/* SECTION 4: Seasonal Spotlight */}
+          <View style={styles.section}>
+            <SectionHeader title="🌱 Seasonal Spotlight" subtitle="What's fresh right now" />
             <FlatList
               horizontal
-              data={seasonalRecipes}
-              renderItem={({ item }) => <SeasonalCard item={item} />}
+              data={SEASONAL_SPOTLIGHT}
+              renderItem={({ item }) => (
+                <SeasonalCard item={item} onPress={() => handleSearch(item.ingredients)} />
+              )}
               keyExtractor={(item) => item.id.toString()}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalList}
             />
           </View>
 
-          {/* Chef's Special Section */}
-          <View style={styles.chefSpecialSection}>
-            <Text style={styles.chefSpecialTitle}>👨‍🍳 Chef's Special</Text>
-            <TouchableOpacity 
-              style={styles.chefSpecialCard}
-              onPress={() => handleQuickRecipePress(CHEF_SPECIAL)}
-            >
-              <Image source={{ uri: CHEF_SPECIAL.image }} style={styles.chefSpecialImage} />
-              <View style={styles.chefSpecialOverlay}>
-                <View style={styles.chefSpecialContent}>
-                  <Text style={styles.chefSpecialName}>{CHEF_SPECIAL.title}</Text>
-                  <Text style={styles.chefSpecialChef}>by {CHEF_SPECIAL.chef}</Text>
-                  <Text style={styles.chefSpecialDesc}>{CHEF_SPECIAL.description}</Text>
-                  <View style={styles.chefSpecialMeta}>
-                    <Text style={styles.chefSpecialTime}>⏱ {CHEF_SPECIAL.time}</Text>
-                    <Text style={styles.chefSpecialDifficulty}>📊 {CHEF_SPECIAL.difficulty}</Text>
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
+          {/* SECTION 5: Chef's Signature */}
+          <View style={styles.section}>
+            <SectionHeader title="👨‍🍳 Chef's Signature" subtitle="Masterchef creations" />
+            <FlatList
+              horizontal
+              data={CHEF_SIGNATURE}
+              renderItem={({ item }) => (
+                <ChefCard item={item} onPress={() => handleSearch(item.ingredients)} />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            />
           </View>
 
-          {/* Cooking Tip of the Day */}
-          <View style={styles.tipSection}>
-            <View style={styles.tipCard}>
-              <Image 
-                source={{ uri: dailyTip.icon }}
-                style={styles.tipIcon}
-              />
-              <View style={styles.tipContent}>
-                <Text style={styles.tipLabel}>💡 Tip of the Day</Text>
-                <Text style={styles.tipText}>{dailyTip.tip}</Text>
-              </View>
-            </View>
+          {/* SECTION 6: Healthy Heroes */}
+          <View style={styles.section}>
+            <SectionHeader title="🥗 Healthy Heroes" subtitle="Under 500 calories" />
+            <FlatList
+              horizontal
+              data={HEALTHY_HEROES}
+              renderItem={({ item }) => (
+                <HealthCard item={item} onPress={() => handleSearch(item.ingredients)} />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            />
           </View>
 
-          {/* Benefits Section */}
-          <View style={styles.benefitsSection}>
-            <Text style={styles.sectionTitle}>Smart Recipe Finder</Text>
-            <View style={styles.benefitsList}>
-              <View style={styles.benefitItem}>
-                <View style={styles.benefitIcon}>
-                  <Image 
-                    source={{ uri: 'https://cdn-icons-png.flaticon.com/512/190/190411.png' }}
-                    style={styles.benefitIconImage}
-                  />
-                </View>
-                <Text style={styles.benefitText}>AI-powered recipe matching</Text>
-              </View>
-              <View style={styles.benefitItem}>
-                <View style={styles.benefitIcon}>
-                  <Image 
-                    source={{ uri: 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png' }}
-                    style={styles.benefitIconImage}
-                  />
-                </View>
-                <Text style={styles.benefitText}>Thousands of recipes</Text>
-              </View>
-              <View style={styles.benefitItem}>
-                <View style={styles.benefitIcon}>
-                  <Image 
-                    source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }}
-                    style={styles.benefitIconImage}
-                  />
-                </View>
-                <Text style={styles.benefitText}>Quick and easy preparation</Text>
-              </View>
-            </View>
+          {/* SECTION 7: Dessert Paradise */}
+          <View style={styles.section}>
+            <SectionHeader title="🍰 Dessert Paradise" subtitle="Sweet indulgence" />
+            <FlatList
+              horizontal
+              data={DESSERT_PARADISE}
+              renderItem={({ item }) => (
+                <DessertCard item={item} onPress={() => handleSearch(item.ingredients)} />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            />
           </View>
+
+          {/* SECTION 8: Comfort Food */}
+          <View style={styles.section}>
+            <SectionHeader title="😌 Comfort Food" subtitle="Warm your soul" />
+            <FlatList
+              horizontal
+              data={COMFORT_FOOD}
+              renderItem={({ item }) => (
+                <ComfortCard item={item} onPress={() => handleSearch(item.ingredients)} />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            />
+          </View>
+
+          {/* SECTION 9: Date Night Specials */}
+          <View style={styles.section}>
+            <SectionHeader title="💕 Date Night" subtitle="Impress someone special" />
+            <FlatList
+              horizontal
+              data={DATE_NIGHT}
+              renderItem={({ item }) => (
+                <DateNightCard item={item} onPress={() => handleSearch(item.ingredients)} />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            />
+          </View>
+
+          {/* SECTION 10: Breakfast Club */}
+          <View style={styles.section}>
+            <SectionHeader title="☀️ Breakfast Club" subtitle="Start your day right" />
+            <FlatList
+              horizontal
+              data={BREAKFAST_CLUB}
+              renderItem={({ item }) => (
+                <BreakfastCard item={item} onPress={() => handleSearch(item.ingredients)} />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            />
+          </View>
+
+          {/* SECTION 11: Vegan Vibes */}
+          <View style={styles.section}>
+            <SectionHeader title="🌱 Vegan Vibes" subtitle="100% plant-based" />
+            <FlatList
+              horizontal
+              data={VEGAN_VIBES}
+              renderItem={({ item }) => (
+                <VeganCard item={item} onPress={() => handleSearch(item.ingredients)} />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            />
+          </View>
+
+          {/* SECTION 12: Drinks & Cocktails */}
+          <View style={styles.section}>
+            <SectionHeader title="🍸 Drinks & Cocktails" subtitle="Raise your glass" />
+            <FlatList
+              horizontal
+              data={DRINKS_COCKTAILS}
+              renderItem={({ item }) => (
+                <DrinkCard item={item} onPress={() => handleSearch(item.ingredients)} />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            />
+          </View>
+
+          {/* SECTION 13: Budget Meals */}
+          <View style={styles.section}>
+            <SectionHeader title="💰 Budget Meals" subtitle="Delicious on a dime" />
+            <FlatList
+              horizontal
+              data={BUDGET_MEALS}
+              renderItem={({ item }) => (
+                <BudgetCard item={item} onPress={() => handleSearch(item.ingredients)} />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            />
+          </View>
+
+          {/* SECTION 14: Kids' Favorites */}
+          <View style={styles.section}>
+            <SectionHeader title="👶 Kids' Favorites" subtitle="Fun for little ones" />
+            <FlatList
+              horizontal
+              data={KIDS_FAVORITES}
+              renderItem={({ item }) => (
+                <KidsCard item={item} onPress={() => handleSearch(item.ingredients)} />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            />
+          </View>
+
+          {/* SECTION 15: Pro Cooking Tips */}
+          <View style={styles.tipsSection}>
+            <SectionHeader title="💡 Pro Cooking Tips" subtitle="Level up your skills" seeAll={false} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {COOKING_TIPS.map((item) => (
+                <TipCard key={item.id} item={item} />
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Bottom Padding */}
+          <View style={{ height: 30 }} />
         </ScrollView>
       ) : (
         <View style={styles.resultsContainer}>
           <View style={styles.resultsHeader}>
-            <Text style={styles.resultsTitle}>
-              Found <Text style={styles.resultsCount}>{recipes.length}</Text> Recipes
-            </Text>
-            <TouchableOpacity onPress={clearSearch}>
-              <Text style={styles.clearButton}>Clear Search</Text>
+            <View>
+              <Text style={styles.resultsTitle}>
+                Found <Text style={styles.resultsCount}>{recipes.length}</Text> Recipes
+              </Text>
+              <Text style={styles.resultsSubtitle}>for "{ingredients}"</Text>
+            </View>
+            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+              <Text style={styles.clearButtonText}>✕ Clear</Text>
             </TouchableOpacity>
           </View>
           
@@ -639,21 +978,10 @@ const HomeScreen = ({ navigation }) => {
             data={recipes}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
-              <RecipeCard 
-                recipe={item} 
-                onPress={() => handleRecipePress(item.id)}
-              />
+              <RecipeCard recipe={item} onPress={() => handleRecipePress(item.id)} />
             )}
             contentContainerStyle={styles.recipesList}
             showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={[COLORS.primary]}
-                tintColor={COLORS.primary}
-              />
-            }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Image 
@@ -661,9 +989,7 @@ const HomeScreen = ({ navigation }) => {
                   style={styles.emptyIcon}
                 />
                 <Text style={styles.emptyTitle}>No recipes found</Text>
-                <Text style={styles.emptyText}>
-                  Try different ingredients or check your spelling
-                </Text>
+                <Text style={styles.emptyText}>Try different ingredients</Text>
               </View>
             }
           />
@@ -678,85 +1004,49 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  heroSection: {
-    backgroundColor: COLORS.card,
-    padding: 16,
+  heroCard: {
     margin: 16,
-    borderRadius: 16,
+    padding: 20,
+    borderRadius: 24,
   },
   heroTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  heroHighlight: {
-    color: COLORS.primary,
+    marginBottom: 6,
   },
   heroSubtitle: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    textAlign: 'center',
     marginBottom: 20,
   },
-  searchContainer: {
+  heroSearchContainer: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
+    gap: 10,
   },
-  searchInput: {
+  heroInput: {
     flex: 1,
     backgroundColor: '#2d2d2d',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     color: COLORS.text,
     fontSize: 16,
   },
-  searchButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 8,
-    padding: 12,
-    flexDirection: 'row',
+  heroButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  heroButtonGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 80,
   },
-  buttonIcon: {
-    width: 20,
-    height: 20,
-    marginRight: 4,
-    tintColor: '#fff',
-  },
-  searchButtonText: {
+  heroButtonText: {
     color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  quickContainer: {
-    marginTop: 8,
-  },
-  quickTitle: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  quickTagsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  quickTag: {
-    backgroundColor: '#2d2d2d',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  quickTagText: {
-    color: COLORS.text,
-    fontSize: 12,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   section: {
     marginBottom: 24,
@@ -773,29 +1063,46 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.text,
   },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
   seeAllText: {
     color: COLORS.primary,
     fontSize: 14,
+    fontWeight: '600',
   },
   horizontalList: {
     paddingHorizontal: 16,
     gap: 12,
   },
+  gradientCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
   trendingCard: {
-    width: 200,
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
+    width: 260,
+    height: 200,
+    borderRadius: 20,
     overflow: 'hidden',
     marginRight: 12,
   },
   trendingImage: {
     width: '100%',
-    height: 120,
+    height: '100%',
+  },
+  trendingGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
   },
   trendingBadge: {
     position: 'absolute',
-    top: 8,
-    left: 8,
+    top: 12,
+    right: 12,
     backgroundColor: COLORS.primary,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -803,228 +1110,528 @@ const styles = StyleSheet.create({
   },
   trendingBadgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
   },
-  trendingContent: {
-    padding: 10,
-  },
   trendingTitle: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
     marginBottom: 4,
   },
   trendingMeta: {
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  trendingChef: {
+    color: '#fff',
+    fontSize: 11,
+    opacity: 0.9,
   },
   trendingTime: {
-    color: COLORS.textSecondary,
-    fontSize: 12,
+    color: '#fff',
+    fontSize: 11,
+    opacity: 0.9,
   },
-  cuisineCard: {
-    alignItems: 'center',
-    marginRight: 16,
-    width: 70,
+  trendingLikes: {
+    color: '#fff',
+    fontSize: 11,
   },
-  cuisineIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  cuisineIcon: {
-    width: 30,
-    height: 30,
-  },
-  cuisineName: {
-    color: COLORS.text,
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  quickCard: {
-    width: 140,
+  quickBiteCard: {
+    width: 180,
     backgroundColor: COLORS.card,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
     marginRight: 12,
   },
-  quickImage: {
+  quickBiteImage: {
     width: '100%',
-    height: 100,
+    height: 120,
   },
-  quickContent: {
-    padding: 8,
+  quickBiteBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  quickTitle: {
+  quickBiteBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  quickBiteContent: {
+    padding: 10,
+  },
+  quickBiteTitle: {
     color: COLORS.text,
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: 4,
   },
-  quickTime: {
-    color: COLORS.primary,
+  quickBiteMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  quickBiteTime: {
+    color: COLORS.textSecondary,
+    fontSize: 10,
+  },
+  quickBiteCalories: {
+    color: COLORS.textSecondary,
+    fontSize: 10,
+  },
+  cuisineGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+    justifyContent: 'space-between',
+  },
+  cuisineCircle: {
+    width: (width - 48) / 5,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 20,
+    marginBottom: 8,
+  },
+  cuisineFlag: {
+    fontSize: 28,
+    marginBottom: 4,
+  },
+  cuisineName: {
     fontSize: 11,
+    fontWeight: '600',
   },
   seasonalCard: {
-    width: 160,
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
+    width: 200,
+    height: 160,
+    borderRadius: 16,
     overflow: 'hidden',
     marginRight: 12,
   },
   seasonalImage: {
     width: '100%',
-    height: 100,
+    height: '100%',
   },
   seasonalOverlay: {
     position: 'absolute',
-    top: 8,
-    left: 8,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 12,
   },
   seasonalBadge: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    color: '#fff',
+    backgroundColor: COLORS.primary,
+    alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    fontSize: 10,
-    overflow: 'hidden',
+    marginBottom: 4,
   },
-  seasonalContent: {
-    padding: 8,
+  seasonalBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
   },
   seasonalTitle: {
-    color: COLORS.text,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  chefSpecialSection: {
-    padding: 16,
-    marginBottom: 16,
-  },
-  chefSpecialTitle: {
-    fontSize: 20,
+    color: '#fff',
+    fontSize: 14,
     fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 12,
-    paddingHorizontal: 16,
+    marginBottom: 2,
   },
-  chefSpecialCard: {
-    height: 200,
+  seasonalMonth: {
+    color: '#fff',
+    fontSize: 10,
+    opacity: 0.8,
+  },
+  chefCard: {
+    width: 240,
+    height: 180,
     borderRadius: 16,
     overflow: 'hidden',
+    marginRight: 12,
   },
-  chefSpecialImage: {
+  chefImage: {
     width: '100%',
     height: '100%',
   },
-  chefSpecialOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
+  chefGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 12,
   },
-  chefSpecialContent: {
-    padding: 16,
-  },
-  chefSpecialName: {
+  chefTitle: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  chefName: {
+    color: '#fff',
+    fontSize: 11,
+    opacity: 0.9,
     marginBottom: 4,
   },
-  chefSpecialChef: {
-    color: '#fff',
-    fontSize: 14,
-    marginBottom: 8,
-    opacity: 0.9,
-  },
-  chefSpecialDesc: {
-    color: '#fff',
-    fontSize: 13,
-    marginBottom: 8,
-    opacity: 0.8,
-  },
-  chefSpecialMeta: {
+  chefMeta: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 8,
   },
-  chefSpecialTime: {
+  chefDifficulty: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  chefSpecialDifficulty: {
+  chefTime: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 10,
   },
-  tipSection: {
-    padding: 16,
-    marginBottom: 16,
+  chefRating: {
+    color: '#fff',
+    fontSize: 10,
   },
-  tipCard: {
+  healthCard: {
+    width: 200,
     backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tipIcon: {
-    width: 40,
-    height: 40,
+    borderRadius: 16,
+    overflow: 'hidden',
     marginRight: 12,
   },
-  tipContent: {
-    flex: 1,
+  healthImage: {
+    width: '100%',
+    height: 100,
   },
-  tipLabel: {
-    color: COLORS.primary,
-    fontSize: 12,
+  healthContent: {
+    padding: 10,
+  },
+  healthTitle: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  healthStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  healthCalories: {
+    color: COLORS.textSecondary,
+    fontSize: 10,
+  },
+  healthProtein: {
+    color: COLORS.textSecondary,
+    fontSize: 10,
+  },
+  healthTime: {
+    color: COLORS.textSecondary,
+    fontSize: 10,
+  },
+  dessertCard: {
+    width: 180,
+    height: 160,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  dessertImage: {
+    width: '100%',
+    height: '100%',
+  },
+  dessertOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 10,
+  },
+  dessertTitle: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 4,
+  },
+  dessertMeta: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dessertTime: {
+    color: '#fff',
+    fontSize: 10,
+  },
+  dessertDifficulty: {
+    color: '#fff',
+    fontSize: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  comfortCard: {
+    width: 200,
+    height: 160,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  comfortImage: {
+    width: '100%',
+    height: '100%',
+  },
+  comfortOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 12,
+  },
+  comfortMood: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  comfortTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  comfortTime: {
+    color: '#fff',
+    fontSize: 10,
+    opacity: 0.8,
+  },
+  dateCard: {
+    width: 220,
+    height: 160,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  dateImage: {
+    width: '100%',
+    height: '100%',
+  },
+  dateOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 12,
+  },
+  dateOccasion: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  dateTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  dateTime: {
+    color: '#fff',
+    fontSize: 10,
+  },
+  breakfastCard: {
+    width: 180,
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  breakfastImage: {
+    width: '100%',
+    height: 100,
+  },
+  breakfastContent: {
+    padding: 10,
+  },
+  breakfastType: {
+    color: COLORS.primary,
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  breakfastTitle: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  breakfastTime: {
+    color: COLORS.textSecondary,
+    fontSize: 10,
+  },
+  veganCard: {
+    width: 160,
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  veganImage: {
+    width: '100%',
+    height: 100,
+  },
+  veganBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: '#4ade80',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  veganBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  veganTitle: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '600',
+    padding: 8,
+    paddingBottom: 4,
+  },
+  veganTime: {
+    color: COLORS.textSecondary,
+    fontSize: 10,
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+  },
+  drinkCard: {
+    width: 160,
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  drinkImage: {
+    width: '100%',
+    height: 100,
+  },
+  drinkContent: {
+    padding: 10,
+  },
+  drinkType: {
+    color: COLORS.primary,
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  drinkTitle: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  drinkTime: {
+    color: COLORS.textSecondary,
+    fontSize: 10,
+  },
+  budgetCard: {
+    width: 180,
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  budgetImage: {
+    width: '100%',
+    height: 100,
+  },
+  budgetContent: {
+    padding: 10,
+  },
+  budgetCost: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  budgetTitle: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  budgetTime: {
+    color: COLORS.textSecondary,
+    fontSize: 10,
+  },
+  kidsCard: {
+    width: 200,
+    height: 160,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  kidsImage: {
+    width: '100%',
+    height: '100%',
+  },
+  kidsOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 12,
+  },
+  kidsBadge: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  kidsTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  kidsTime: {
+    color: '#fff',
+    fontSize: 10,
+    opacity: 0.8,
+  },
+  tipsSection: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  tipCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginRight: 10,
+  },
+  tipEmoji: {
+    fontSize: 18,
+    marginRight: 8,
   },
   tipText: {
     color: COLORS.text,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  benefitsSection: {
-    padding: 16,
-    marginBottom: 20,
-  },
-  benefitsList: {
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
-  },
-  benefitItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  benefitIcon: {
-    backgroundColor: COLORS.primary,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  benefitIconImage: {
-    width: 18,
-    height: 18,
-    tintColor: '#fff',
-  },
-  benefitText: {
-    color: COLORS.text,
-    fontSize: 14,
+    fontSize: 13,
   },
   resultsContainer: {
     flex: 1,
-    padding: 16,
+    paddingTop: 16,
+    paddingHorizontal: 16,
   },
   resultsHeader: {
     flexDirection: 'row',
@@ -1034,14 +1641,25 @@ const styles = StyleSheet.create({
   },
   resultsTitle: {
     color: COLORS.text,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
+  },
+  resultsSubtitle: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    marginTop: 2,
   },
   resultsCount: {
     color: COLORS.primary,
   },
   clearButton: {
-    color: COLORS.textSecondary,
+    backgroundColor: COLORS.card,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  clearButtonText: {
+    color: COLORS.text,
     fontSize: 14,
   },
   recipesList: {
@@ -1053,8 +1671,8 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   emptyIcon: {
-    width: 48,
-    height: 48,
+    width: 60,
+    height: 60,
     marginBottom: 16,
     tintColor: COLORS.textSecondary,
   },
@@ -1062,7 +1680,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 18,
     fontWeight: 'bold',
-    marginTop: 16,
     marginBottom: 8,
   },
   emptyText: {

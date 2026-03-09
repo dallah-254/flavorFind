@@ -3,7 +3,8 @@ import Constants from 'expo-constants';
 
 const { extra } = Constants.expoConfig || {};
 
-export const API_BASE_URL = extra?.apiUrl || 'https://recipe-finder-back-qibi.onrender.com';
+// Change this to your new AWS API Gateway URL
+export const API_BASE_URL = 'https://wmmz0kyh33.execute-api.us-east-1.amazonaws.com/prod/api';
 
 export const COLORS = {
   primary: '#e87a3d',
